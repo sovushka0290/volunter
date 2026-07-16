@@ -4,7 +4,7 @@ import { db, logActivity } from '../db.js';
 import { notify, TEMPLATES } from '../services/notifications.js';
 import { hashPassword, checkPassword, signToken, requireAuth } from '../middleware/auth.js';
 import { bad, normalizeContact, requireFields, wrap, ApiError } from '../utils/helpers.js';
-import { await publicUser } from './_serialize.js';
+import { publicUser } from './_serialize.js';
 
 export const authRouter = Router();
 

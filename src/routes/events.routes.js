@@ -5,7 +5,7 @@ import { requireAuth, requireRole, requireApproved } from '../middleware/auth.js
 import { notify, notifyMany, TEMPLATES } from '../services/notifications.js';
 import { bad, forbidden, notFound, parseDbDate, requireFields, toArray, wrap } from '../utils/helpers.js';
 import { ALL_DIRECTION_KEYS } from '../utils/dictionaries.js';
-import { await publicEvent } from './_serialize.js';
+import { publicEvent } from './_serialize.js';
 
 export const eventsRouter = Router();
 eventsRouter.use(requireAuth);
@@ -49,7 +49,7 @@ eventsRouter.get(
       )
       .all(...params);
 
-    res.json({ items: rows.map((e) => await publicEvent(e, req.user.id)) });
+    res.json({ items: await Promise.all(rows.map(async (e) => await publicEvent(e, req.user.id))) });
   })
 );
 

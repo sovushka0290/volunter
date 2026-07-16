@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { wrap, bad, parseDbDate } from '../utils/helpers.js';
-import { await publicUser, publicApplication } from './_serialize.js';
+import { publicUser, publicApplication } from './_serialize.js';
 
 export const profileRouter = Router();
 profileRouter.use(requireAuth);

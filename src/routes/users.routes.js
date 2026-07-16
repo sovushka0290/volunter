@@ -3,7 +3,7 @@ import { db, logActivity } from '../db.js';
 import { requireAuth, requireRole, hashPassword } from '../middleware/auth.js';
 import { notify, TEMPLATES } from '../services/notifications.js';
 import { bad, notFound, normalizeContact, wrap } from '../utils/helpers.js';
-import { await publicUser } from './_serialize.js';
+import { publicUser } from './_serialize.js';
 
 export const usersRouter = Router();
 usersRouter.use(requireAuth, requireRole('admin'));
@@ -23,7 +23,7 @@ usersRouter.get(
           ORDER BY created_at DESC LIMIT 500`
       )
       .all(role, role, req.query.q || null, `%${req.query.q || ''}%`, `%${req.query.q || ''}%`);
-    res.json({ items: rows.map(await publicUser) });
+    res.json({ items: await Promise.all(rows.map(async (u) => await publicUser(u))) });
   })
 );
 

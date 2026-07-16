@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { notify, TEMPLATES } from '../services/notifications.js';
 import { bad, forbidden, notFound, wrap, parseDbDate } from '../utils/helpers.js';
 import { parseJson } from '../utils/helpers.js';
-import { await publicEvent } from './_serialize.js';
+import { publicEvent } from './_serialize.js';
 
 export const coordinatorRouter = Router();
 coordinatorRouter.use(requireAuth, requireRole('coordinator', 'admin'));
@@ -27,7 +27,7 @@ coordinatorRouter.get(
         ? await db.prepare(`SELECT * FROM events ORDER BY starts_at DESC`).all()
         : await db.prepare(`SELECT * FROM events WHERE coordinator_id = ? ORDER BY starts_at DESC`).all(req.user.id);
     const now = new Date();
-    const items = rows.map((e) => await publicEvent(e, req.user.id));
+    const items = await Promise.all(rows.map(async (e) => await publicEvent(e, req.user.id)));
     res.json({
       upcoming: items.filter((e) => parseDbDate(e.starts_at) >= now && e.status !== 'cancelled'),
       past: items.filter((e) => parseDbDate(e.starts_at) < now || e.status === 'finished'),

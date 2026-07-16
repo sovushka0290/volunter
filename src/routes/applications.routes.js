@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { notify, TEMPLATES } from '../services/notifications.js';
 import { ageFrom, bad, forbidden, notFound, requireFields, toArray, wrap } from '../utils/helpers.js';
 import { ALL_DIRECTION_KEYS, ALL_SKILL_KEYS } from '../utils/dictionaries.js';
-import { publicApplication, await publicUser } from './_serialize.js';
+import { publicApplication, publicUser } from './_serialize.js';
 
 export const applicationsRouter = Router();
 applicationsRouter.use(requireAuth);

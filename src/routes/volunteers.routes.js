@@ -3,7 +3,7 @@ import { db } from '../db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ageFrom, notFound, parseDbDate, parseJson, toArray, wrap } from '../utils/helpers.js';
 import { SKILL_TITLES } from '../utils/dictionaries.js';
-import { publicApplication, await publicUser } from './_serialize.js';
+import { publicApplication, publicUser } from './_serialize.js';
 
 export const volunteersRouter = Router();
 volunteersRouter.use(requireAuth, requireRole('admin'));
