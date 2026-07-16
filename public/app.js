@@ -237,7 +237,7 @@ function loginForm() {
     }
   };
   $('#submit').onclick = submit;
-  $('#auth-body').onkeydown = (e) => e.key === 'Enter' && submit();
+  $('#auth-body').onkeydown = (e) => { if (e.key === 'Enter') submit(); };
 }
 
 function registerForm() {
