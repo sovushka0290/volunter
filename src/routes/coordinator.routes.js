@@ -10,7 +10,7 @@ export const coordinatorRouter = Router();
 coordinatorRouter.use(requireAuth, requireRole('coordinator', 'admin'));
 
 /** Доступ к мероприятию: свое — координатору, любое — администратору. */
-function loadEvent(req) {
+async function loadEvent(req) {
   const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
   if (!event) throw notFound('Мероприятие не найдено');
   if (req.user.role !== 'admin' && event.coordinator_id !== req.user.id)
@@ -40,7 +40,7 @@ coordinatorRouter.get(
 coordinatorRouter.get(
   '/events/:id/registrations',
   wrap(async (req, res) => {
-    const event = loadEvent(req);
+    const event = await loadEvent(req);
     const rows = await db
       .prepare(
         `SELECT r.*, u.full_name, u.phone, u.city, u.birth_date, u.photo_url,
@@ -157,7 +157,7 @@ coordinatorRouter.post(
 coordinatorRouter.post(
   '/events/:id/close',
   wrap(async (req, res) => {
-    const event = loadEvent(req);
+    const event = await loadEvent(req);
     const items = Array.isArray(req.body.items) ? req.body.items : [];
     if (!items.length) throw bad('Передайте список участников с явкой и часами');
 

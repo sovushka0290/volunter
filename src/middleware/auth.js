@@ -14,7 +14,7 @@ export function signToken(user) {
 }
 
 /** Требует валидный Bearer-токен. Кладет пользователя в req.user. */
-export function requireAuth(req, _res, next) {
+export async function requireAuth(req, _res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return next(new ApiError(401, 'Нужна авторизация'));

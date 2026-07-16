@@ -71,7 +71,7 @@ eventsRouter.post(
   wrap(async (req, res) => {
     requireFields(req.body, ['title', 'starts_at', 'needed_count']);
     const coordinatorId = req.body.coordinator_id || null;
-    if (coordinatorId) assertCoordinator(coordinatorId);
+    if (coordinatorId) await assertCoordinator(coordinatorId);
     const status = EVENT_STATUSES.includes(req.body.status) ? req.body.status : 'published';
     const directions = toArray(req.body.directions).filter((d) => ALL_DIRECTION_KEYS.includes(d));
 
@@ -129,7 +129,7 @@ eventsRouter.patch(
     if (req.body.directions !== undefined) fields.push('directions_json');
     if (!fields.length) throw bad('Нет полей для сохранения');
     if (req.body.status && !EVENT_STATUSES.includes(req.body.status)) throw bad('Некорректный статус мероприятия');
-    if (req.body.coordinator_id) assertCoordinator(req.body.coordinator_id);
+    if (req.body.coordinator_id) await assertCoordinator(req.body.coordinator_id);
 
     const values = fields.map((f) =>
       f === 'directions_json'
@@ -233,7 +233,7 @@ eventsRouter.post(
   })
 );
 
-function assertCoordinator(id) {
+async function assertCoordinator(id) {
   const user = await db.prepare(`SELECT role FROM users WHERE id = ?`).get(id);
   if (!user) throw bad('Координатор не найден');
   if (!['coordinator', 'admin'].includes(user.role)) throw bad('Назначить координатором можно только пользователя с ролью «Координатор»');

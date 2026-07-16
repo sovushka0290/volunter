@@ -5,7 +5,7 @@ import { db } from '../db.js';
  * Telegram/WhatsApp подключаются добавлением функции в CHANNELS.
  */
 const CHANNELS = {
-  inapp: (userId, payload) => {
+  inapp: async (userId, payload) => {
     await db.prepare(
       `INSERT INTO notifications (user_id, type, title, body, link) VALUES (?, ?, ?, ?, ?)`
     ).run(userId, payload.type, payload.title, payload.body ?? null, payload.link ?? null);

@@ -87,8 +87,7 @@ profileRouter.post(
     const ids = Array.isArray(req.body.ids) ? req.body.ids : null;
     if (ids?.length) {
       const stmt = await db.prepare(`UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?`);
-      const tx = db.transaction((list) => list.forEach((id) => stmt.run(id, req.user.id)));
-      tx(ids);
+      await Promise.all(ids.map(id => stmt.run(id, req.user.id)));
     } else {
       await db.prepare(`UPDATE notifications SET is_read = 1 WHERE user_id = ?`).run(req.user.id);
     }
@@ -97,7 +96,7 @@ profileRouter.post(
 );
 
 /** Простые достижения на основе часов и мероприятий. */
-function buildAchievements(userId) {
+async function buildAchievements(userId) {
   const stats = await db.prepare(`SELECT * FROM volunteer_stats WHERE user_id = ?`).get(userId) || {};
   const hours = Number(stats.total_hours || 0);
   const events = Number(stats.events_count || 0);
