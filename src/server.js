@@ -12,7 +12,8 @@ import { usersRouter } from './routes/users.routes.js';
 import { analyticsRouter } from './routes/analytics.routes.js';
 import { dictionariesRouter } from './routes/dictionaries.routes.js';
 
-export const app = express();
+const app = express();
+export default app;
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));

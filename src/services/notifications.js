@@ -6,7 +6,7 @@ import { db } from '../db.js';
  */
 const CHANNELS = {
   inapp: (userId, payload) => {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO notifications (user_id, type, title, body, link) VALUES (?, ?, ?, ?, ?)`
     ).run(userId, payload.type, payload.title, payload.body ?? null, payload.link ?? null);
   },

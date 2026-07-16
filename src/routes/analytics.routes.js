@@ -10,10 +10,10 @@ analyticsRouter.use(requireAuth, requireRole('admin'));
 /** Сводка для дашборда администратора. */
 analyticsRouter.get(
   '/dashboard',
-  wrap((_req, res) => {
-    const one = (sql, ...p) => db.prepare(sql).get(...p);
+  wrap(async (_req, res) => {
+    const one = async (sql, ...p) => await db.prepare(sql).get(...p);
 
-    const totals = one(`
+    const totals = await one(`
       SELECT
         (SELECT COUNT(*) FROM users WHERE role = 'volunteer') AS volunteers_total,
         (SELECT COUNT(*) FROM users WHERE role = 'volunteer' AND application_status = 'pending') AS new_applications,
@@ -24,13 +24,13 @@ analyticsRouter.get(
     `);
 
     // Активный волонтер — участвовал хотя бы раз за последние 90 дней.
-    const active = one(`
+    const active = await one(`
       SELECT COUNT(DISTINCT r.user_id) AS c
         FROM registrations r JOIN events e ON e.id = r.event_id
        WHERE r.attendance = 'present' AND e.starts_at >= datetime('now', '-90 days')
     `).c;
 
-    const approved = one(`SELECT COUNT(*) AS c FROM users WHERE role = 'volunteer' AND application_status = 'approved'`).c;
+    const approved = await one(`SELECT COUNT(*) AS c FROM users WHERE role = 'volunteer' AND application_status = 'approved'`).c;
     const avgHours = approved ? Number(totals.hours_total) / approved : 0;
 
     const byDirection = db

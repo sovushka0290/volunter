@@ -12,7 +12,7 @@ function generateCode() {
  */
 export function issueCode(phone, purpose) {
   const code = generateCode();
-  db.prepare(
+  await db.prepare(
     `INSERT INTO phone_codes (phone, code, purpose, expires_at)
      VALUES (?, ?, ?, datetime('now', ?))`
   ).run(phone, code, purpose, `+${config.smsCodeTtlMinutes} minutes`);
@@ -42,9 +42,9 @@ export function verifyCode(phone, code, purpose) {
   if (!row) return false;
   if (row.attempts >= 5) return false;
   if (row.code !== String(code)) {
-    db.prepare(`UPDATE phone_codes SET attempts = attempts + 1 WHERE id = ?`).run(row.id);
+    await db.prepare(`UPDATE phone_codes SET attempts = attempts + 1 WHERE id = ?`).run(row.id);
     return false;
   }
-  db.prepare(`UPDATE phone_codes SET used = 1 WHERE id = ?`).run(row.id);
+  await db.prepare(`UPDATE phone_codes SET used = 1 WHERE id = ?`).run(row.id);
   return true;
 }

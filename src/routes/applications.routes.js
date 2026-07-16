@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { notify, TEMPLATES } from '../services/notifications.js';
 import { ageFrom, bad, forbidden, notFound, requireFields, toArray, wrap } from '../utils/helpers.js';
 import { ALL_DIRECTION_KEYS, ALL_SKILL_KEYS } from '../utils/dictionaries.js';
-import { publicApplication, publicUser } from './_serialize.js';
+import { publicApplication, await publicUser } from './_serialize.js';
 
 export const applicationsRouter = Router();
 applicationsRouter.use(requireAuth);
@@ -15,7 +15,7 @@ const TYPES = { organization: 'Волонтер организации (14+)', p
 /** Выбор типа волонтерства. Проверяется возрастной порог. */
 applicationsRouter.post(
   '/type',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const type = req.body.volunteer_type;
     if (!TYPES[type]) throw bad('Выберите тип волонтерства');
     const birthDate = req.body.birth_date || req.user.birth_date;
@@ -24,18 +24,18 @@ applicationsRouter.post(
     const minAge = config.minAge[type];
     if (age < minAge) throw bad(`Для этого типа участия нужно ${minAge} лет и больше. Сейчас: ${age}`);
 
-    db.prepare(
+    await db.prepare(
       `UPDATE users SET volunteer_type = ?, birth_date = ?, updated_at = datetime('now') WHERE id = ?`
     ).run(type, birthDate, req.user.id);
-    const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.user.id);
-    res.json({ user: publicUser(user) });
+    const user = await db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.user.id);
+    res.json({ user: await publicUser(user) });
   })
 );
 
 /** Отправка анкеты на рассмотрение. Повторная отправка допустима после отклонения/доработки. */
 applicationsRouter.post(
   '/',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const user = req.user;
     if (!user.volunteer_type) throw bad('Сначала выберите тип волонтерства');
     if (['pending', 'approved'].includes(user.application_status))
@@ -55,8 +55,8 @@ applicationsRouter.post(
     const directions = toArray(req.body.directions).filter((d) => ALL_DIRECTION_KEYS.includes(d));
     if (!directions.length) throw bad('Выберите хотя бы одно направление деятельности');
 
-    const tx = db.transaction(() => {
-      db.prepare(
+    const tx = await db.transaction(async () => {
+      await db.prepare(
         `UPDATE users
             SET full_name = ?, birth_date = ?, gender = ?, city = ?, email = ?,
                 application_status = 'pending', updated_at = datetime('now')
@@ -99,19 +99,19 @@ applicationsRouter.post(
       return info.lastInsertRowid;
     });
 
-    const id = tx();
-    logActivity(user.id, user.id, 'application_submitted', `application:${id}`);
+    const id = await tx();
+    await logActivity(user.id, user.id, 'application_submitted', `application:${id}`);
     notify(user.id, ...TEMPLATES.applicationSubmitted());
-    const application = db.prepare(`SELECT * FROM applications WHERE id = ?`).get(id);
-    const fresh = db.prepare(`SELECT * FROM users WHERE id = ?`).get(user.id);
-    res.status(201).json({ application: publicApplication(application), user: publicUser(fresh) });
+    const application = await db.prepare(`SELECT * FROM applications WHERE id = ?`).get(id);
+    const fresh = await db.prepare(`SELECT * FROM users WHERE id = ?`).get(user.id);
+    res.status(201).json({ application: publicApplication(application), user: await publicUser(fresh) });
   })
 );
 
 /** Своя последняя анкета. */
 applicationsRouter.get(
   '/mine',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const app = db
       .prepare(`SELECT * FROM applications WHERE user_id = ? ORDER BY id DESC LIMIT 1`)
       .get(req.user.id);
@@ -123,7 +123,7 @@ applicationsRouter.get(
 applicationsRouter.get(
   '/',
   requireRole('admin'),
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const status = req.query.status || 'pending';
     const rows = db
       .prepare(
@@ -146,12 +146,12 @@ applicationsRouter.get(
 /** Карточка заявки. Свою анкету видит владелец, чужие — только администратор. */
 applicationsRouter.get(
   '/:id',
-  wrap((req, res) => {
-    const app = db.prepare(`SELECT * FROM applications WHERE id = ?`).get(req.params.id);
+  wrap(async (req, res) => {
+    const app = await db.prepare(`SELECT * FROM applications WHERE id = ?`).get(req.params.id);
     if (!app) throw notFound('Заявка не найдена');
     if (req.user.role !== 'admin' && app.user_id !== req.user.id) throw forbidden();
-    const owner = db.prepare(`SELECT * FROM users WHERE id = ?`).get(app.user_id);
-    res.json({ application: publicApplication(app), user: publicUser(owner) });
+    const owner = await db.prepare(`SELECT * FROM users WHERE id = ?`).get(app.user_id);
+    res.json({ application: publicApplication(app), user: await publicUser(owner) });
   })
 );
 
@@ -159,12 +159,12 @@ applicationsRouter.get(
 applicationsRouter.post(
   '/:id/decision',
   requireRole('admin'),
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const decision = req.body.decision;
     const map = { approve: 'approved', reject: 'rejected', revision: 'revision' };
     if (!map[decision]) throw bad('Решение должно быть одним из: approve, reject, revision');
 
-    const app = db.prepare(`SELECT * FROM applications WHERE id = ?`).get(req.params.id);
+    const app = await db.prepare(`SELECT * FROM applications WHERE id = ?`).get(req.params.id);
     if (!app) throw notFound('Заявка не найдена');
     if (app.status !== 'pending') throw bad('По этой заявке решение уже принято');
 
@@ -172,22 +172,22 @@ applicationsRouter.post(
     const comment = req.body.comment || null;
     if (decision !== 'approve' && !comment) throw bad('Укажите причину — она уйдет волонтеру');
 
-    db.transaction(() => {
-      db.prepare(
+    await db.transaction(async () => {
+      await db.prepare(
         `UPDATE applications SET status = ?, review_comment = ?, reviewed_by = ?, reviewed_at = datetime('now') WHERE id = ?`
       ).run(status, comment, req.user.id, app.id);
-      db.prepare(`UPDATE users SET application_status = ?, updated_at = datetime('now') WHERE id = ?`).run(
+      await db.prepare(`UPDATE users SET application_status = ?, updated_at = datetime('now') WHERE id = ?`).run(
         status === 'revision' ? 'revision' : status,
         app.user_id
       );
     })();
 
-    logActivity(req.user.id, app.user_id, `application_${status}`, comment);
+    await logActivity(req.user.id, app.user_id, `application_${status}`, comment);
     if (status === 'approved') notify(app.user_id, ...TEMPLATES.approved());
     if (status === 'rejected') notify(app.user_id, ...TEMPLATES.rejected(comment));
     if (status === 'revision') notify(app.user_id, ...TEMPLATES.revision(comment));
 
-    const updated = db.prepare(`SELECT * FROM applications WHERE id = ?`).get(app.id);
+    const updated = await db.prepare(`SELECT * FROM applications WHERE id = ?`).get(app.id);
     res.json({ application: publicApplication(updated) });
   })
 );

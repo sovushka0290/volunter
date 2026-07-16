@@ -10,7 +10,7 @@ export const dictionariesRouter = Router();
 /** Справочники для форм: направления, навыки, качества, языки, занятость. */
 dictionariesRouter.get(
   '/',
-  wrap((_req, res) => {
+  wrap(async (_req, res) => {
     res.json({
       directions: DIRECTIONS,
       qualities: QUALITIES,
@@ -29,7 +29,7 @@ dictionariesRouter.get(
 dictionariesRouter.get(
   '/coordinators',
   requireAuth,
-  wrap((_req, res) => {
+  wrap(async (_req, res) => {
     const items = db
       .prepare(`SELECT id, full_name, phone, city FROM users WHERE role = 'coordinator' AND is_blocked = 0 ORDER BY full_name`)
       .all();

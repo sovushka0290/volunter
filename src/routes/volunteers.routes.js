@@ -3,7 +3,7 @@ import { db } from '../db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ageFrom, notFound, parseDbDate, parseJson, toArray, wrap } from '../utils/helpers.js';
 import { SKILL_TITLES } from '../utils/dictionaries.js';
-import { publicApplication, publicUser } from './_serialize.js';
+import { publicApplication, await publicUser } from './_serialize.js';
 
 export const volunteersRouter = Router();
 volunteersRouter.use(requireAuth, requireRole('admin'));
@@ -135,7 +135,7 @@ function activityLabel(lastEventAt) {
 /** База волонтеров с фильтрами и пагинацией. */
 volunteersRouter.get(
   '/',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const { where, params } = buildFilter(req.query);
     const limit = Math.min(Number(req.query.limit) || 25, 200);
     const page = Math.max(Number(req.query.page) || 1, 1);
@@ -161,8 +161,8 @@ volunteersRouter.get(
 /** Карточка волонтера с анкетой и историей участия. */
 volunteersRouter.get(
   '/:id',
-  wrap((req, res) => {
-    const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.params.id);
+  wrap(async (req, res) => {
+    const user = await db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.params.id);
     if (!user) throw notFound('Волонтер не найден');
     const application = db
       .prepare(`SELECT * FROM applications WHERE user_id = ? ORDER BY id DESC LIMIT 1`)
@@ -177,7 +177,7 @@ volunteersRouter.get(
     const log = db
       .prepare(`SELECT * FROM activity_log WHERE target_id = ? ORDER BY id DESC LIMIT 50`)
       .all(user.id);
-    res.json({ user: publicUser(user), application: publicApplication(application), history, activity_log: log });
+    res.json({ user: await publicUser(user), application: publicApplication(application), history, activity_log: log });
   })
 );
 
@@ -187,7 +187,7 @@ volunteersRouter.get(
  */
 volunteersRouter.post(
   '/match',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const skills = toArray(req.body.skills);
     const directions = toArray(req.body.directions);
     const limit = Math.min(Number(req.body.limit) || 20, 100);
@@ -196,7 +196,7 @@ volunteersRouter.post(
     if (req.body.volunteer_type) query.volunteer_type = req.body.volunteer_type;
     const { where, params } = buildFilter(query);
 
-    const rows = db.prepare(`${BASE_SELECT} WHERE ${where}`).all(...params).map(mapRow);
+    const rows = await db.prepare(`${BASE_SELECT} WHERE ${where}`).all(...params).map(mapRow);
 
     const scored = rows
       .map((v) => {
@@ -228,9 +228,9 @@ volunteersRouter.post(
 /** Экспорт выборки в CSV (открывается в Excel). */
 volunteersRouter.get(
   '/export/csv',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const { where, params } = buildFilter(req.query);
-    const rows = db.prepare(`${BASE_SELECT} WHERE ${where} ORDER BY u.created_at DESC`).all(...params).map(mapRow);
+    const rows = await db.prepare(`${BASE_SELECT} WHERE ${where} ORDER BY u.created_at DESC`).all(...params).map(mapRow);
 
     const headers = [
       'ФИО', 'Телефон', 'Возраст', 'Пол', 'Город', 'Тип волонтерства', 'Статус',

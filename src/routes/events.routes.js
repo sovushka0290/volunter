@@ -5,7 +5,7 @@ import { requireAuth, requireRole, requireApproved } from '../middleware/auth.js
 import { notify, notifyMany, TEMPLATES } from '../services/notifications.js';
 import { bad, forbidden, notFound, parseDbDate, requireFields, toArray, wrap } from '../utils/helpers.js';
 import { ALL_DIRECTION_KEYS } from '../utils/dictionaries.js';
-import { publicEvent } from './_serialize.js';
+import { await publicEvent } from './_serialize.js';
 
 export const eventsRouter = Router();
 eventsRouter.use(requireAuth);
@@ -18,7 +18,7 @@ const EVENT_STATUSES = ['draft', 'published', 'ongoing', 'finished', 'cancelled'
  */
 eventsRouter.get(
   '/',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const where = [];
     const params = [];
 
@@ -49,18 +49,18 @@ eventsRouter.get(
       )
       .all(...params);
 
-    res.json({ items: rows.map((e) => publicEvent(e, req.user.id)) });
+    res.json({ items: rows.map((e) => await publicEvent(e, req.user.id)) });
   })
 );
 
 eventsRouter.get(
   '/:id',
-  wrap((req, res) => {
-    const event = db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
+  wrap(async (req, res) => {
+    const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
     if (!event) throw notFound('Мероприятие не найдено');
     if (req.user.role === 'volunteer' && ['draft', 'cancelled'].includes(event.status))
       throw notFound('Мероприятие не найдено');
-    res.json({ event: publicEvent(event, req.user.id) });
+    res.json({ event: await publicEvent(event, req.user.id) });
   })
 );
 
@@ -68,7 +68,7 @@ eventsRouter.get(
 eventsRouter.post(
   '/',
   requireRole('admin'),
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     requireFields(req.body, ['title', 'starts_at', 'needed_count']);
     const coordinatorId = req.body.coordinator_id || null;
     if (coordinatorId) assertCoordinator(coordinatorId);
@@ -97,8 +97,8 @@ eventsRouter.post(
         req.user.id
       );
 
-    const event = db.prepare(`SELECT * FROM events WHERE id = ?`).get(info.lastInsertRowid);
-    logActivity(req.user.id, null, 'event_created', `event:${event.id}`);
+    const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(info.lastInsertRowid);
+    await logActivity(req.user.id, null, 'event_created', `event:${event.id}`);
 
     if (status === 'published') {
       const audience = db
@@ -109,7 +109,7 @@ eventsRouter.post(
     }
     if (coordinatorId) notify(coordinatorId, 'event_assigned', 'Вы координатор мероприятия', event.title, '#/events');
 
-    res.status(201).json({ event: publicEvent(event, req.user.id) });
+    res.status(201).json({ event: await publicEvent(event, req.user.id) });
   })
 );
 
@@ -117,8 +117,8 @@ eventsRouter.post(
 eventsRouter.patch(
   '/:id',
   requireRole('admin'),
-  wrap((req, res) => {
-    const event = db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
+  wrap(async (req, res) => {
+    const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
     if (!event) throw notFound('Мероприятие не найдено');
 
     const allowed = [
@@ -136,12 +136,12 @@ eventsRouter.patch(
         ? JSON.stringify(toArray(req.body.directions).filter((d) => ALL_DIRECTION_KEYS.includes(d)))
         : req.body[f] ?? null
     );
-    db.prepare(
+    await db.prepare(
       `UPDATE events SET ${fields.map((f) => `${f} = ?`).join(', ')}, updated_at = datetime('now') WHERE id = ?`
     ).run(...values, event.id);
 
-    const updated = db.prepare(`SELECT * FROM events WHERE id = ?`).get(event.id);
-    logActivity(req.user.id, null, 'event_updated', `event:${event.id}`);
+    const updated = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(event.id);
+    await logActivity(req.user.id, null, 'event_updated', `event:${event.id}`);
 
     const participants = db
       .prepare(`SELECT user_id FROM registrations WHERE event_id = ? AND status IN ('signed_up','accepted')`)
@@ -162,18 +162,18 @@ eventsRouter.patch(
     if (req.body.coordinator_id && req.body.coordinator_id !== event.coordinator_id)
       notify(updated.coordinator_id, 'event_assigned', 'Вы координатор мероприятия', updated.title, '#/events');
 
-    res.json({ event: publicEvent(updated, req.user.id) });
+    res.json({ event: await publicEvent(updated, req.user.id) });
   })
 );
 
 eventsRouter.delete(
   '/:id',
   requireRole('admin'),
-  wrap((req, res) => {
-    const event = db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
+  wrap(async (req, res) => {
+    const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
     if (!event) throw notFound('Мероприятие не найдено');
-    db.prepare(`DELETE FROM events WHERE id = ?`).run(event.id);
-    logActivity(req.user.id, null, 'event_deleted', `event:${event.id}`);
+    await db.prepare(`DELETE FROM events WHERE id = ?`).run(event.id);
+    await logActivity(req.user.id, null, 'event_deleted', `event:${event.id}`);
     res.json({ ok: true });
   })
 );
@@ -183,8 +183,8 @@ eventsRouter.post(
   '/:id/signup',
   requireRole('volunteer'),
   requireApproved,
-  wrap((req, res) => {
-    const event = db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
+  wrap(async (req, res) => {
+    const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
     if (!event) throw notFound('Мероприятие не найдено');
     if (event.status !== 'published') throw bad('Запись на это мероприятие закрыта');
     if (parseDbDate(event.starts_at) < new Date()) throw bad('Мероприятие уже началось');
@@ -195,18 +195,18 @@ eventsRouter.post(
     if (existing && existing.status !== 'cancelled') throw bad('Вы уже записаны на это мероприятие');
 
     if (existing) {
-      db.prepare(`UPDATE registrations SET status = 'signed_up', updated_at = datetime('now') WHERE id = ?`).run(existing.id);
+      await db.prepare(`UPDATE registrations SET status = 'signed_up', updated_at = datetime('now') WHERE id = ?`).run(existing.id);
     } else {
-      db.prepare(`INSERT INTO registrations (event_id, user_id, status) VALUES (?, ?, 'signed_up')`).run(
+      await db.prepare(`INSERT INTO registrations (event_id, user_id, status) VALUES (?, ?, 'signed_up')`).run(
         event.id,
         req.user.id
       );
     }
-    logActivity(req.user.id, req.user.id, 'event_signup', `event:${event.id}`);
+    await logActivity(req.user.id, req.user.id, 'event_signup', `event:${event.id}`);
     if (event.coordinator_id)
       notify(event.coordinator_id, 'new_signup', 'Новая запись на мероприятие', `${req.user.full_name || req.user.phone} — ${event.title}`, '#/teams');
 
-    res.status(201).json({ event: publicEvent(event, req.user.id) });
+    res.status(201).json({ event: await publicEvent(event, req.user.id) });
   })
 );
 
@@ -214,27 +214,27 @@ eventsRouter.post(
 eventsRouter.post(
   '/:id/cancel',
   requireRole('volunteer'),
-  wrap((req, res) => {
-    const event = db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
+  wrap(async (req, res) => {
+    const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
     if (!event) throw notFound('Мероприятие не найдено');
-    const reg = db.prepare(`SELECT * FROM registrations WHERE event_id = ? AND user_id = ?`).get(event.id, req.user.id);
+    const reg = await db.prepare(`SELECT * FROM registrations WHERE event_id = ? AND user_id = ?`).get(event.id, req.user.id);
     if (!reg || reg.status === 'cancelled') throw bad('Записи на это мероприятие нет');
 
     const deadline = new Date(parseDbDate(event.starts_at).getTime() - config.cancelDeadlineHours * 3600 * 1000);
     if (new Date() > deadline)
       throw bad(`Отменить запись можно не позднее чем за ${config.cancelDeadlineHours} ч до начала. Свяжитесь с координатором`);
 
-    db.prepare(`UPDATE registrations SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?`).run(reg.id);
-    logActivity(req.user.id, req.user.id, 'event_cancel', `event:${event.id}`);
+    await db.prepare(`UPDATE registrations SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?`).run(reg.id);
+    await logActivity(req.user.id, req.user.id, 'event_cancel', `event:${event.id}`);
     if (event.coordinator_id)
       notify(event.coordinator_id, 'signup_cancelled', 'Волонтер отменил запись', `${req.user.full_name || req.user.phone} — ${event.title}`, '#/teams');
 
-    res.json({ event: publicEvent(event, req.user.id) });
+    res.json({ event: await publicEvent(event, req.user.id) });
   })
 );
 
 function assertCoordinator(id) {
-  const user = db.prepare(`SELECT role FROM users WHERE id = ?`).get(id);
+  const user = await db.prepare(`SELECT role FROM users WHERE id = ?`).get(id);
   if (!user) throw bad('Координатор не найден');
   if (!['coordinator', 'admin'].includes(user.role)) throw bad('Назначить координатором можно только пользователя с ролью «Координатор»');
 }

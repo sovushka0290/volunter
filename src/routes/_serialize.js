@@ -2,11 +2,11 @@ import { db } from '../db.js';
 import { ageFrom, parseJson } from '../utils/helpers.js';
 
 /** Пользователь без пароля, с возрастом и координатором. */
-export function publicUser(u) {
+export async function await publicUser(u) {
   if (!u) return null;
-  const stats = db.prepare(`SELECT * FROM volunteer_stats WHERE user_id = ?`).get(u.id) || {};
+  const stats = await db.prepare(`SELECT * FROM volunteer_stats WHERE user_id = ?`).get(u.id) || {};
   const coordinator = u.coordinator_id
-    ? db.prepare(`SELECT id, full_name, contact FROM users WHERE id = ?`).get(u.coordinator_id)
+    ? await db.prepare(`SELECT id, full_name, contact FROM users WHERE id = ?`).get(u.coordinator_id)
     : null;
   return {
     id: u.id,
@@ -57,7 +57,7 @@ export function publicApplication(a) {
   };
 }
 
-export function publicEvent(e, viewerId) {
+export async function await publicEvent(e, viewerId) {
   if (!e) return null;
   const counts = db
     .prepare(
@@ -68,10 +68,10 @@ export function publicEvent(e, viewerId) {
     )
     .get(e.id);
   const coordinator = e.coordinator_id
-    ? db.prepare(`SELECT id, full_name, contact FROM users WHERE id = ?`).get(e.coordinator_id)
+    ? await db.prepare(`SELECT id, full_name, contact FROM users WHERE id = ?`).get(e.coordinator_id)
     : null;
   const myRegistration = viewerId
-    ? db.prepare(`SELECT id, status, attendance, hours FROM registrations WHERE event_id = ? AND user_id = ?`).get(e.id, viewerId)
+    ? await db.prepare(`SELECT id, status, attendance, hours FROM registrations WHERE event_id = ? AND user_id = ?`).get(e.id, viewerId)
     : null;
   return {
     id: e.id,

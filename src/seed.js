@@ -23,7 +23,7 @@ const iso = (daysOffset, hour = 10) => {
 };
 
 function ensureUser({ contact, role, full_name, city, birth_date, gender, volunteer_type, status }) {
-  const existing = db.prepare(`SELECT * FROM users WHERE contact = ?`).get(contact);
+  const existing = await db.prepare(`SELECT * FROM users WHERE contact = ?`).get(contact);
   if (existing) return existing;
   const info = db
     .prepare(
@@ -42,10 +42,10 @@ function ensureUser({ contact, role, full_name, city, birth_date, gender, volunt
       status || 'approved',
       `-${Math.floor(Math.random() * 300)} days`
     );
-  return db.prepare(`SELECT * FROM users WHERE id = ?`).get(info.lastInsertRowid);
+  return await db.prepare(`SELECT * FROM users WHERE id = ?`).get(info.lastInsertRowid);
 }
 
-if (db.prepare(`SELECT COUNT(*) AS c FROM users`).get().c > 0) {
+if (await db.prepare(`SELECT COUNT(*) AS c FROM users`).get().c > 0) {
   console.log('В базе уже есть данные. Для чистого набора: npm run reset');
 }
 
@@ -84,10 +84,10 @@ for (let i = 0; i < 40; i++) {
   volunteers.push(user);
 
   if (status === 'draft') continue;
-  if (db.prepare(`SELECT id FROM applications WHERE user_id = ?`).get(user.id)) continue;
+  if (await db.prepare(`SELECT id FROM applications WHERE user_id = ?`).get(user.id)) continue;
 
   const skills = pickMany(SKILLS, 1 + Math.floor(Math.random() * 3));
-  db.prepare(
+  await db.prepare(
     `INSERT INTO applications
        (user_id, volunteer_type, status, answers_json, education, occupation, languages_json,
         skills_json, directions_json, interests_json, qualities_json, goals, motivation,
@@ -114,7 +114,7 @@ for (let i = 0; i < 40; i++) {
   );
 
   if (status === 'approved' && Math.random() > 0.25)
-    db.prepare(`UPDATE users SET coordinator_id = ? WHERE id = ?`).run(pick(coordinators).id, user.id);
+    await db.prepare(`UPDATE users SET coordinator_id = ? WHERE id = ?`).run(pick(coordinators).id, user.id);
 }
 
 // --- Мероприятия ---
@@ -127,7 +127,7 @@ const eventSeeds = [
   { title: 'Съемка социального ролика', days: 20, dir: ['content', 'media'], need: 8 },
 ];
 
-if (db.prepare(`SELECT COUNT(*) AS c FROM events`).get().c === 0) {
+if (await db.prepare(`SELECT COUNT(*) AS c FROM events`).get().c === 0) {
   for (const e of eventSeeds) {
     const past = e.days < 0;
     const coordinator = pick(coordinators);
@@ -158,11 +158,11 @@ if (db.prepare(`SELECT COUNT(*) AS c FROM events`).get().c === 0) {
       const status = past ? 'accepted' : pick(['signed_up', 'accepted', 'accepted']);
       const attendance = past ? (Math.random() > 0.15 ? 'present' : 'absent') : null;
       const hours = attendance === 'present' ? 3 + Math.floor(Math.random() * 5) : 0;
-      db.prepare(
+      await db.prepare(
         `INSERT OR IGNORE INTO registrations (event_id, user_id, status, attendance, hours) VALUES (?, ?, ?, ?, ?)`
       ).run(eventId, v.id, status, attendance, hours);
       if (hours > 0)
-        db.prepare(`INSERT INTO hour_logs (user_id, event_id, hours, reason, created_by) VALUES (?, ?, ?, ?, ?)`).run(
+        await db.prepare(`INSERT INTO hour_logs (user_id, event_id, hours, reason, created_by) VALUES (?, ?, ?, ?, ?)`).run(
           v.id,
           eventId,
           hours,

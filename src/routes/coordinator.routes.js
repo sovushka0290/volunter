@@ -4,14 +4,14 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { notify, TEMPLATES } from '../services/notifications.js';
 import { bad, forbidden, notFound, wrap, parseDbDate } from '../utils/helpers.js';
 import { parseJson } from '../utils/helpers.js';
-import { publicEvent } from './_serialize.js';
+import { await publicEvent } from './_serialize.js';
 
 export const coordinatorRouter = Router();
 coordinatorRouter.use(requireAuth, requireRole('coordinator', 'admin'));
 
 /** Доступ к мероприятию: свое — координатору, любое — администратору. */
 function loadEvent(req) {
-  const event = db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
+  const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
   if (!event) throw notFound('Мероприятие не найдено');
   if (req.user.role !== 'admin' && event.coordinator_id !== req.user.id)
     throw forbidden('Это мероприятие закреплено за другим координатором');
@@ -21,13 +21,13 @@ function loadEvent(req) {
 /** Мероприятия координатора: текущие и прошедшие. */
 coordinatorRouter.get(
   '/events',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const rows =
       req.user.role === 'admin' && req.query.all === '1'
-        ? db.prepare(`SELECT * FROM events ORDER BY starts_at DESC`).all()
-        : db.prepare(`SELECT * FROM events WHERE coordinator_id = ? ORDER BY starts_at DESC`).all(req.user.id);
+        ? await db.prepare(`SELECT * FROM events ORDER BY starts_at DESC`).all()
+        : await db.prepare(`SELECT * FROM events WHERE coordinator_id = ? ORDER BY starts_at DESC`).all(req.user.id);
     const now = new Date();
-    const items = rows.map((e) => publicEvent(e, req.user.id));
+    const items = rows.map((e) => await publicEvent(e, req.user.id));
     res.json({
       upcoming: items.filter((e) => parseDbDate(e.starts_at) >= now && e.status !== 'cancelled'),
       past: items.filter((e) => parseDbDate(e.starts_at) < now || e.status === 'finished'),
@@ -39,7 +39,7 @@ coordinatorRouter.get(
 /** Список записавшихся на мероприятие с данными анкеты. */
 coordinatorRouter.get(
   '/events/:id/registrations',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const event = loadEvent(req);
     const rows = db
       .prepare(
@@ -57,7 +57,7 @@ coordinatorRouter.get(
       .all(event.id);
 
     res.json({
-      event: publicEvent(event, req.user.id),
+      event: await publicEvent(event, req.user.id),
       items: rows.map((r) => ({
         id: r.id,
         status: r.status,
@@ -84,10 +84,10 @@ coordinatorRouter.get(
 /** Решение по участнику: accept | reject, распределение роли в команде. */
 coordinatorRouter.post(
   '/registrations/:regId/decision',
-  wrap((req, res) => {
-    const reg = db.prepare(`SELECT * FROM registrations WHERE id = ?`).get(req.params.regId);
+  wrap(async (req, res) => {
+    const reg = await db.prepare(`SELECT * FROM registrations WHERE id = ?`).get(req.params.regId);
     if (!reg) throw notFound('Запись не найдена');
-    const event = db.prepare(`SELECT * FROM events WHERE id = ?`).get(reg.event_id);
+    const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(reg.event_id);
     if (req.user.role !== 'admin' && event.coordinator_id !== req.user.id) throw forbidden();
 
     const map = { accept: 'accepted', reject: 'rejected' };
@@ -102,11 +102,11 @@ coordinatorRouter.post(
         throw bad(`Набрана команда: ${accepted} из ${event.needed_count}. Передайте force=true, чтобы добавить сверх плана`);
     }
 
-    db.prepare(
+    await db.prepare(
       `UPDATE registrations SET status = ?, team_role = COALESCE(?, team_role), comment = COALESCE(?, comment), updated_at = datetime('now') WHERE id = ?`
     ).run(status, req.body.team_role ?? null, req.body.comment ?? null, reg.id);
 
-    logActivity(req.user.id, reg.user_id, `registration_${status}`, `event:${event.id}`);
+    await logActivity(req.user.id, reg.user_id, `registration_${status}`, `event:${event.id}`);
     notify(
       reg.user_id,
       ...(status === 'accepted'
@@ -121,10 +121,10 @@ coordinatorRouter.post(
 /** Явка и часы. Часы начисляются один раз и пересчитываются при исправлении. */
 coordinatorRouter.post(
   '/registrations/:regId/attendance',
-  wrap((req, res) => {
-    const reg = db.prepare(`SELECT * FROM registrations WHERE id = ?`).get(req.params.regId);
+  wrap(async (req, res) => {
+    const reg = await db.prepare(`SELECT * FROM registrations WHERE id = ?`).get(req.params.regId);
     if (!reg) throw notFound('Запись не найдена');
-    const event = db.prepare(`SELECT * FROM events WHERE id = ?`).get(reg.event_id);
+    const event = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(reg.event_id);
     if (req.user.role !== 'admin' && event.coordinator_id !== req.user.id) throw forbidden();
     if (reg.status !== 'accepted') throw bad('Отмечать явку можно только у принятых в команду');
 
@@ -133,20 +133,20 @@ coordinatorRouter.post(
     const hours = attendance === 'present' ? Number(req.body.hours ?? 0) : 0;
     if (!Number.isFinite(hours) || hours < 0 || hours > 24) throw bad('Часы указываются числом от 0 до 24');
 
-    db.transaction(() => {
-      db.prepare(
+    await db.transaction(async () => {
+      await db.prepare(
         `UPDATE registrations SET attendance = ?, hours = ?, comment = COALESCE(?, comment), updated_at = datetime('now') WHERE id = ?`
       ).run(attendance, hours, req.body.comment ?? null, reg.id);
 
       // Пересчет: удаляем прежнее начисление по этому мероприятию и пишем актуальное.
-      db.prepare(`DELETE FROM hour_logs WHERE user_id = ? AND event_id = ?`).run(reg.user_id, event.id);
+      await db.prepare(`DELETE FROM hour_logs WHERE user_id = ? AND event_id = ?`).run(reg.user_id, event.id);
       if (hours > 0)
-        db.prepare(
+        await db.prepare(
           `INSERT INTO hour_logs (user_id, event_id, hours, reason, created_by) VALUES (?, ?, ?, ?, ?)`
         ).run(reg.user_id, event.id, hours, `Мероприятие «${event.title}»`, req.user.id);
     })();
 
-    logActivity(req.user.id, reg.user_id, 'attendance_marked', `event:${event.id} ${attendance} ${hours}ч`);
+    await logActivity(req.user.id, reg.user_id, 'attendance_marked', `event:${event.id} ${attendance} ${hours}ч`);
     if (hours > 0) notify(reg.user_id, ...TEMPLATES.hoursAdded(hours, event.title));
 
     res.json({ ok: true, attendance, hours });
@@ -156,13 +156,13 @@ coordinatorRouter.post(
 /** Массовая отметка явки после мероприятия. */
 coordinatorRouter.post(
   '/events/:id/close',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const event = loadEvent(req);
     const items = Array.isArray(req.body.items) ? req.body.items : [];
     if (!items.length) throw bad('Передайте список участников с явкой и часами');
 
     const results = [];
-    db.transaction(() => {
+    await db.transaction(async () => {
       for (const item of items) {
         const reg = db
           .prepare(`SELECT * FROM registrations WHERE id = ? AND event_id = ?`)
@@ -171,12 +171,12 @@ coordinatorRouter.post(
         const attendance = item.attendance === 'present' ? 'present' : 'absent';
         const hours = attendance === 'present' ? Math.max(0, Math.min(24, Number(item.hours) || 0)) : 0;
 
-        db.prepare(
+        await db.prepare(
           `UPDATE registrations SET attendance = ?, hours = ?, comment = COALESCE(?, comment), updated_at = datetime('now') WHERE id = ?`
         ).run(attendance, hours, item.comment ?? null, reg.id);
-        db.prepare(`DELETE FROM hour_logs WHERE user_id = ? AND event_id = ?`).run(reg.user_id, event.id);
+        await db.prepare(`DELETE FROM hour_logs WHERE user_id = ? AND event_id = ?`).run(reg.user_id, event.id);
         if (hours > 0)
-          db.prepare(`INSERT INTO hour_logs (user_id, event_id, hours, reason, created_by) VALUES (?, ?, ?, ?, ?)`).run(
+          await db.prepare(`INSERT INTO hour_logs (user_id, event_id, hours, reason, created_by) VALUES (?, ?, ?, ?, ?)`).run(
             reg.user_id,
             event.id,
             hours,
@@ -185,11 +185,11 @@ coordinatorRouter.post(
           );
         results.push({ registration_id: reg.id, user_id: reg.user_id, attendance, hours });
       }
-      db.prepare(`UPDATE events SET status = 'finished', updated_at = datetime('now') WHERE id = ?`).run(event.id);
+      await db.prepare(`UPDATE events SET status = 'finished', updated_at = datetime('now') WHERE id = ?`).run(event.id);
     })();
 
     for (const r of results) if (r.hours > 0) notify(r.user_id, ...TEMPLATES.hoursAdded(r.hours, event.title));
-    logActivity(req.user.id, null, 'event_closed', `event:${event.id}`);
+    await logActivity(req.user.id, null, 'event_closed', `event:${event.id}`);
     res.json({ ok: true, updated: results.length });
   })
 );
@@ -197,7 +197,7 @@ coordinatorRouter.post(
 /** Команда координатора: закрепленные волонтеры и их статистика. */
 coordinatorRouter.get(
   '/team',
-  wrap((req, res) => {
+  wrap(async (req, res) => {
     const coordinatorId = req.user.role === 'admin' && req.query.coordinator_id ? req.query.coordinator_id : req.user.id;
     const members = db
       .prepare(

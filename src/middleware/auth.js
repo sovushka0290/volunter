@@ -20,7 +20,7 @@ export function requireAuth(req, _res, next) {
   if (!token) return next(new ApiError(401, 'Нужна авторизация'));
   try {
     const payload = jwt.verify(token, config.jwtSecret);
-    const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(payload.id);
+    const user = await db.prepare(`SELECT * FROM users WHERE id = ?`).get(payload.id);
     if (!user) return next(new ApiError(401, 'Пользователь не найден'));
     if (user.is_blocked) return next(new ApiError(403, 'Учетная запись заблокирована'));
     req.user = user;
