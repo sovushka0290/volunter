@@ -70,7 +70,7 @@ applicationsRouter.post(
         user.id
       );
 
-      const info = db
+      const info = await db
         .prepare(
           `INSERT INTO applications
              (user_id, volunteer_type, status, answers_json, education, occupation, languages_json,
@@ -112,7 +112,7 @@ applicationsRouter.post(
 applicationsRouter.get(
   '/mine',
   wrap(async (req, res) => {
-    const app = db
+    const app = await db
       .prepare(`SELECT * FROM applications WHERE user_id = ? ORDER BY id DESC LIMIT 1`)
       .get(req.user.id);
     res.json({ application: publicApplication(app) });
@@ -125,7 +125,7 @@ applicationsRouter.get(
   requireRole('admin'),
   wrap(async (req, res) => {
     const status = req.query.status || 'pending';
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT a.*, u.full_name, u.contact, u.city, u.birth_date
            FROM applications a JOIN users u ON u.id = a.user_id

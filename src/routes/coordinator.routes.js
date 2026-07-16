@@ -41,7 +41,7 @@ coordinatorRouter.get(
   '/events/:id/registrations',
   wrap(async (req, res) => {
     const event = loadEvent(req);
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT r.*, u.full_name, u.phone, u.city, u.birth_date, u.photo_url,
                 a.skills_json, a.directions_json,
@@ -95,7 +95,7 @@ coordinatorRouter.post(
     if (!status) throw bad('Решение должно быть accept или reject');
 
     if (status === 'accepted') {
-      const accepted = db
+      const accepted = await db
         .prepare(`SELECT COUNT(*) AS c FROM registrations WHERE event_id = ? AND status = 'accepted'`)
         .get(event.id).c;
       if (accepted >= event.needed_count && !req.body.force)
@@ -164,7 +164,7 @@ coordinatorRouter.post(
     const results = [];
     await db.transaction(async () => {
       for (const item of items) {
-        const reg = db
+        const reg = await db
           .prepare(`SELECT * FROM registrations WHERE id = ? AND event_id = ?`)
           .get(item.registration_id, event.id);
         if (!reg || reg.status !== 'accepted') continue;
@@ -199,7 +199,7 @@ coordinatorRouter.get(
   '/team',
   wrap(async (req, res) => {
     const coordinatorId = req.user.role === 'admin' && req.query.coordinator_id ? req.query.coordinator_id : req.user.id;
-    const members = db
+    const members = await db
       .prepare(
         `SELECT u.id, u.full_name, u.phone, u.city, u.volunteer_type, u.application_status,
                 s.total_hours, s.events_count, s.last_event_at
@@ -209,7 +209,7 @@ coordinatorRouter.get(
       )
       .all(coordinatorId);
 
-    const stats = db
+    const stats = await db
       .prepare(
         `SELECT COUNT(*) AS events_total,
                 SUM(CASE WHEN starts_at >= datetime('now') AND status != 'cancelled' THEN 1 ELSE 0 END) AS upcoming

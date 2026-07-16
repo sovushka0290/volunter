@@ -59,7 +59,7 @@ export function publicApplication(a) {
 
 export async function publicEvent(e, viewerId) {
   if (!e) return null;
-  const counts = db
+  const counts = await db
     .prepare(
       `SELECT
          SUM(CASE WHEN status IN ('signed_up','accepted') THEN 1 ELSE 0 END) AS signed_up,

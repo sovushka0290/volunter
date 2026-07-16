@@ -32,7 +32,7 @@ function deliver(phone, text) {
 
 /** Проверяет код. Возвращает true и гасит код, если он верный. */
 export function verifyCode(phone, code, purpose) {
-  const row = db
+  const row = await db
     .prepare(
       `SELECT * FROM phone_codes
         WHERE phone = ? AND purpose = ? AND used = 0 AND expires_at > datetime('now')

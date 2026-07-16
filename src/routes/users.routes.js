@@ -15,7 +15,7 @@ usersRouter.get(
   '/',
   wrap(async (req, res) => {
     const role = ROLES.includes(req.query.role) ? req.query.role : null;
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT * FROM users
           WHERE (? IS NULL OR role = ?)
@@ -38,7 +38,7 @@ usersRouter.post(
       throw bad('Пароль должен содержать минимум 8 символов');
     if (await db.prepare(`SELECT id FROM users WHERE contact = ?`).get(contact)) throw bad('Пользователь с таким контактом уже есть');
 
-    const info = db
+    const info = await db
       .prepare(
         `INSERT INTO users (contact, password_hash, role, full_name, city, application_status)
          VALUES (?, ?, ?, ?, ?, ?)`
@@ -174,7 +174,7 @@ usersRouter.delete(
 usersRouter.get(
   '/:id/activity',
   wrap(async (req, res) => {
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT l.*, a.full_name AS actor_name
            FROM activity_log l LEFT JOIN users a ON a.id = l.actor_id

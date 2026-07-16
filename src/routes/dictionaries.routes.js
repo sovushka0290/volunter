@@ -30,7 +30,7 @@ dictionariesRouter.get(
   '/coordinators',
   requireAuth,
   wrap(async (_req, res) => {
-    const items = db
+    const items = await db
       .prepare(`SELECT id, full_name, phone, city FROM users WHERE role = 'coordinator' AND is_blocked = 0 ORDER BY full_name`)
       .all();
     res.json({ items });

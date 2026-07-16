@@ -25,7 +25,7 @@ const iso = (daysOffset, hour = 10) => {
 function ensureUser({ contact, role, full_name, city, birth_date, gender, volunteer_type, status }) {
   const existing = await db.prepare(`SELECT * FROM users WHERE contact = ?`).get(contact);
   if (existing) return existing;
-  const info = db
+  const info = await db
     .prepare(
       `INSERT INTO users (contact, password_hash, role, full_name, birth_date, gender, city, volunteer_type, application_status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`
@@ -131,7 +131,7 @@ if (await db.prepare(`SELECT COUNT(*) AS c FROM events`).get().c === 0) {
   for (const e of eventSeeds) {
     const past = e.days < 0;
     const coordinator = pick(coordinators);
-    const info = db
+    const info = await db
       .prepare(
         `INSERT INTO events (title, description, starts_at, ends_at, location, city, needed_count,
                              coordinator_id, requirements, directions_json, status, created_by)

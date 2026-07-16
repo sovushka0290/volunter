@@ -11,11 +11,11 @@ profileRouter.use(requireAuth);
 profileRouter.get(
   '/',
   wrap(async (req, res) => {
-    const application = db
+    const application = await db
       .prepare(`SELECT * FROM applications WHERE user_id = ? ORDER BY id DESC LIMIT 1`)
       .get(req.user.id);
 
-    const history = db
+    const history = await db
       .prepare(
         `SELECT r.id, r.status, r.attendance, r.hours, r.comment,
                 e.id AS event_id, e.title, e.starts_at, e.location, e.status AS event_status
@@ -26,7 +26,7 @@ profileRouter.get(
       )
       .all(req.user.id);
 
-    const hours = db
+    const hours = await db
       .prepare(
         `SELECT h.id, h.hours, h.reason, h.created_at, e.title AS event_title
            FROM hour_logs h
@@ -73,7 +73,7 @@ profileRouter.patch(
 profileRouter.get(
   '/notifications',
   wrap(async (req, res) => {
-    const items = db
+    const items = await db
       .prepare(`SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 100`)
       .all(req.user.id);
     const unread = items.filter((n) => !n.is_read).length;

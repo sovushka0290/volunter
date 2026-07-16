@@ -141,7 +141,7 @@ volunteersRouter.get(
     const page = Math.max(Number(req.query.page) || 1, 1);
     const order = SORTS[req.query.sort] || SORTS.created_at;
 
-    const total = db
+    const total = await db
       .prepare(
         `SELECT COUNT(*) AS c FROM users u
            LEFT JOIN volunteer_stats s ON s.user_id = u.id
@@ -150,7 +150,7 @@ volunteersRouter.get(
       )
       .get(...params).c;
 
-    const rows = db
+    const rows = await db
       .prepare(`${BASE_SELECT} WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
       .all(...params, limit, (page - 1) * limit);
 
@@ -164,17 +164,17 @@ volunteersRouter.get(
   wrap(async (req, res) => {
     const user = await db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.params.id);
     if (!user) throw notFound('Волонтер не найден');
-    const application = db
+    const application = await db
       .prepare(`SELECT * FROM applications WHERE user_id = ? ORDER BY id DESC LIMIT 1`)
       .get(user.id);
-    const history = db
+    const history = await db
       .prepare(
         `SELECT r.status, r.attendance, r.hours, r.comment, e.id AS event_id, e.title, e.starts_at
            FROM registrations r JOIN events e ON e.id = r.event_id
           WHERE r.user_id = ? ORDER BY e.starts_at DESC`
       )
       .all(user.id);
-    const log = db
+    const log = await db
       .prepare(`SELECT * FROM activity_log WHERE target_id = ? ORDER BY id DESC LIMIT 50`)
       .all(user.id);
     res.json({ user: await publicUser(user), application: publicApplication(application), history, activity_log: log });

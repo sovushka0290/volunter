@@ -41,7 +41,7 @@ eventsRouter.get(
       params.push(`%${req.query.q}%`, `%${req.query.q}%`);
     }
 
-    const rows = db
+    const rows = await db
       .prepare(
         `SELECT e.* FROM events e
           ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
@@ -75,7 +75,7 @@ eventsRouter.post(
     const status = EVENT_STATUSES.includes(req.body.status) ? req.body.status : 'published';
     const directions = toArray(req.body.directions).filter((d) => ALL_DIRECTION_KEYS.includes(d));
 
-    const info = db
+    const info = await db
       .prepare(
         `INSERT INTO events
            (title, description, starts_at, ends_at, location, city, needed_count,
@@ -101,7 +101,7 @@ eventsRouter.post(
     await logActivity(req.user.id, null, 'event_created', `event:${event.id}`);
 
     if (status === 'published') {
-      const audience = db
+      const audience = await db
         .prepare(`SELECT id FROM users WHERE role = 'volunteer' AND application_status = 'approved' AND is_blocked = 0`)
         .all()
         .map((r) => r.id);
@@ -143,7 +143,7 @@ eventsRouter.patch(
     const updated = await db.prepare(`SELECT * FROM events WHERE id = ?`).get(event.id);
     await logActivity(req.user.id, null, 'event_updated', `event:${event.id}`);
 
-    const participants = db
+    const participants = await db
       .prepare(`SELECT user_id FROM registrations WHERE event_id = ? AND status IN ('signed_up','accepted')`)
       .all(event.id)
       .map((r) => r.user_id);
@@ -152,7 +152,7 @@ eventsRouter.patch(
 
     // Переход в 'published' из другого статуса — это анонс: уведомляем всех одобренных волонтёров.
     if (req.body.status === 'published' && event.status !== 'published') {
-      const audience = db
+      const audience = await db
         .prepare(`SELECT id FROM users WHERE role = 'volunteer' AND application_status = 'approved' AND is_blocked = 0`)
         .all()
         .map((r) => r.id);
@@ -189,7 +189,7 @@ eventsRouter.post(
     if (event.status !== 'published') throw bad('Запись на это мероприятие закрыта');
     if (parseDbDate(event.starts_at) < new Date()) throw bad('Мероприятие уже началось');
 
-    const existing = db
+    const existing = await db
       .prepare(`SELECT * FROM registrations WHERE event_id = ? AND user_id = ?`)
       .get(event.id, req.user.id);
     if (existing && existing.status !== 'cancelled') throw bad('Вы уже записаны на это мероприятие');

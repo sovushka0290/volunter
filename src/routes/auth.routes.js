@@ -25,12 +25,17 @@ authRouter.post(
     if (!validPassword(req.body.password)) throw bad('Пароль должен содержать минимум 8 символов');
     if (await db.prepare(`SELECT id FROM users WHERE contact = ?`).get(contact)) throw bad('Этот контакт уже зарегистрирован');
 
-    const info = db
+    const userCount = (await db.prepare(`SELECT COUNT(*) as c FROM users`).get()).c;
+    const isFirst = parseInt(userCount) === 0;
+    const role = isFirst ? 'admin' : 'volunteer';
+    const status = isFirst ? 'approved' : 'draft';
+
+    const info = await db
       .prepare(
         `INSERT INTO users (contact, password_hash, role, full_name, application_status)
-         VALUES (?, ?, 'volunteer', ?, 'draft')`
+         VALUES (?, ?, ?, ?, ?)`
       )
-      .run(contact, hashPassword(req.body.password), req.body.full_name || null);
+      .run(contact, hashPassword(req.body.password), role, req.body.full_name || null, status);
 
     const user = await db.prepare(`SELECT * FROM users WHERE id = ?`).get(info.lastInsertRowid);
     await logActivity(user.id, user.id, 'register', contact);

@@ -33,7 +33,7 @@ analyticsRouter.get(
     const approved = await one(`SELECT COUNT(*) AS c FROM users WHERE role = 'volunteer' AND application_status = 'approved'`).c;
     const avgHours = approved ? Number(totals.hours_total) / approved : 0;
 
-    const byDirection = db
+    const byDirection = await db
       .prepare(
         `SELECT je.value AS direction, COUNT(*) AS count
            FROM applications a, json_each(a.directions_json) je
@@ -43,7 +43,7 @@ analyticsRouter.get(
       .all()
       .map((r) => ({ key: r.direction, title: DIRECTION_TITLES[r.direction] || r.direction, count: r.count }));
 
-    const registrationsByMonth = db
+    const registrationsByMonth = await db
       .prepare(
         `SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS count
            FROM users WHERE role = 'volunteer'
@@ -52,7 +52,7 @@ analyticsRouter.get(
       .all()
       .reverse();
 
-    const topVolunteers = db
+    const topVolunteers = await db
       .prepare(
         `SELECT u.id, u.full_name, u.city, s.total_hours, s.events_count
            FROM users u JOIN volunteer_stats s ON s.user_id = u.id
@@ -61,7 +61,7 @@ analyticsRouter.get(
       )
       .all();
 
-    const topCoordinators = db
+    const topCoordinators = await db
       .prepare(
         `SELECT u.id, u.full_name,
                 COUNT(DISTINCT e.id) AS events_count,
@@ -75,14 +75,14 @@ analyticsRouter.get(
       )
       .all();
 
-    const byStatus = db
+    const byStatus = await db
       .prepare(
         `SELECT application_status AS status, COUNT(*) AS count
            FROM users WHERE role = 'volunteer' GROUP BY application_status`
       )
       .all();
 
-    const byType = db
+    const byType = await db
       .prepare(
         `SELECT volunteer_type AS type, COUNT(*) AS count
            FROM users WHERE role = 'volunteer' AND volunteer_type IS NOT NULL GROUP BY volunteer_type`
