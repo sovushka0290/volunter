@@ -4,6 +4,7 @@ import { config } from './config.js';
 // Vercel Postgres usually exposes POSTGRES_URL.
 const pool = new pg.Pool({
   connectionString: process.env.POSTGRES_URL || 'postgresql://postgres:postgres@localhost:5432/volunteer',
+  ...(process.env.POSTGRES_URL ? { ssl: { rejectUnauthorized: false } } : {})
 });
 
 // Convert SQLite `?` placeholders to Postgres `$1, $2, ...`

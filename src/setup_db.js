@@ -133,10 +133,8 @@ SELECT
 FROM users u;
 `;
 
-async function setup() {
+export async function setupDb() {
   console.log('Initializing Postgres Schema...');
   await db.exec(schema);
   console.log('Schema created successfully!');
 }
-
-setup().catch(console.error);
