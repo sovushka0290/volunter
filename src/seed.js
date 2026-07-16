@@ -22,16 +22,16 @@ const iso = (daysOffset, hour = 10) => {
   return d.toISOString().slice(0, 16).replace('T', ' ');
 };
 
-function ensureUser({ phone, role, full_name, city, birth_date, gender, volunteer_type, status }) {
-  const existing = db.prepare(`SELECT * FROM users WHERE phone = ?`).get(phone);
+function ensureUser({ contact, role, full_name, city, birth_date, gender, volunteer_type, status }) {
+  const existing = db.prepare(`SELECT * FROM users WHERE contact = ?`).get(contact);
   if (existing) return existing;
   const info = db
     .prepare(
-      `INSERT INTO users (phone, password_hash, role, full_name, birth_date, gender, city, phone_verified, volunteer_type, application_status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, datetime('now', ?))`
+      `INSERT INTO users (contact, password_hash, role, full_name, birth_date, gender, city, volunteer_type, application_status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`
     )
     .run(
-      phone,
+      contact,
       hashPassword(PASSWORD),
       role,
       full_name,
@@ -51,28 +51,28 @@ if (db.prepare(`SELECT COUNT(*) AS c FROM users`).get().c > 0) {
 
 // --- Администратор ---
 const admin = ensureUser({
-  phone: '+77010000001', role: 'admin', full_name: 'Администратор Платформы',
+  contact: '@admin', role: 'admin', full_name: 'Администратор Платформы',
   city: 'Астана', birth_date: '1990-05-14', gender: 'female',
 });
 
 // --- Координаторы ---
 const coordinators = [
-  { phone: '+77010000002', full_name: 'Ержан Сериков', city: 'Астана' },
-  { phone: '+77010000003', full_name: 'Алина Ким', city: 'Алматы' },
-  { phone: '+77010000004', full_name: 'Тимур Ибраев', city: 'Шымкент' },
+  { contact: '@coord1', full_name: 'Ержан Сериков', city: 'Астана' },
+  { contact: '@coord2', full_name: 'Алина Ким', city: 'Алматы' },
+  { contact: '@coord3', full_name: 'Тимур Ибраев', city: 'Шымкент' },
 ].map((c) => ensureUser({ ...c, role: 'coordinator', birth_date: '1992-03-10', gender: 'male' }));
 
 // --- Волонтеры ---
 const statuses = ['approved', 'approved', 'approved', 'approved', 'pending', 'rejected', 'draft'];
 const volunteers = [];
 for (let i = 0; i < 40; i++) {
-  const phone = `+7702${String(1000000 + i)}`;
+  const contact = `@vol${i}`;
   const type = Math.random() > 0.4 ? 'organization' : 'party';
   const age = type === 'party' ? 19 + Math.floor(Math.random() * 20) : 14 + Math.floor(Math.random() * 25);
   const birthYear = new Date().getFullYear() - age;
   const status = pick(statuses);
   const user = ensureUser({
-    phone,
+    contact,
     role: 'volunteer',
     full_name: `${pick(FIRST)} ${pick(LAST)}`,
     city: pick(CITIES),
@@ -174,6 +174,6 @@ if (db.prepare(`SELECT COUNT(*) AS c FROM events`).get().c === 0) {
 }
 
 console.log(`Готово. Пароль для всех демо-аккаунтов: ${PASSWORD}`);
-console.log(`  Администратор: +7 701 000 00 01`);
-console.log(`  Координатор:   +7 701 000 00 02`);
-console.log(`  Волонтер:      +7 702 100 00 00`);
+console.log(`  Администратор: @admin`);
+console.log(`  Координатор:   @coord1`);
+console.log(`  Волонтер:      @vol0`);

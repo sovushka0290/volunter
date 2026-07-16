@@ -6,11 +6,11 @@ export function publicUser(u) {
   if (!u) return null;
   const stats = db.prepare(`SELECT * FROM volunteer_stats WHERE user_id = ?`).get(u.id) || {};
   const coordinator = u.coordinator_id
-    ? db.prepare(`SELECT id, full_name, phone FROM users WHERE id = ?`).get(u.coordinator_id)
+    ? db.prepare(`SELECT id, full_name, contact FROM users WHERE id = ?`).get(u.coordinator_id)
     : null;
   return {
     id: u.id,
-    phone: u.phone,
+    contact: u.contact,
     role: u.role,
     full_name: u.full_name,
     birth_date: u.birth_date,
@@ -68,7 +68,7 @@ export function publicEvent(e, viewerId) {
     )
     .get(e.id);
   const coordinator = e.coordinator_id
-    ? db.prepare(`SELECT id, full_name, phone FROM users WHERE id = ?`).get(e.coordinator_id)
+    ? db.prepare(`SELECT id, full_name, contact FROM users WHERE id = ?`).get(e.coordinator_id)
     : null;
   const myRegistration = viewerId
     ? db.prepare(`SELECT id, status, attendance, hours FROM registrations WHERE event_id = ? AND user_id = ?`).get(e.id, viewerId)

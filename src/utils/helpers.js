@@ -10,13 +10,11 @@ export const bad = (message, details) => new ApiError(400, message, details);
 export const forbidden = (message = 'Недостаточно прав') => new ApiError(403, message);
 export const notFound = (message = 'Не найдено') => new ApiError(404, message);
 
-/** Приводит телефон к формату +7XXXXXXXXXX (только цифры и ведущий плюс). */
-export function normalizePhone(raw) {
+/** Убирает лишние пробелы из контакта. */
+export function normalizeContact(raw) {
   if (typeof raw !== 'string') return null;
-  let digits = raw.replace(/[^\d]/g, '');
-  if (digits.length === 11 && digits.startsWith('8')) digits = '7' + digits.slice(1);
-  if (digits.length < 10 || digits.length > 15) return null;
-  return '+' + digits;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export function parseJson(value, fallback) {

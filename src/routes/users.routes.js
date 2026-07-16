@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db, logActivity } from '../db.js';
 import { requireAuth, requireRole, hashPassword } from '../middleware/auth.js';
 import { notify, TEMPLATES } from '../services/notifications.js';
-import { bad, notFound, normalizePhone, wrap } from '../utils/helpers.js';
+import { bad, notFound, normalizeContact, wrap } from '../utils/helpers.js';
 import { publicUser } from './_serialize.js';
 
 export const usersRouter = Router();
@@ -19,7 +19,7 @@ usersRouter.get(
       .prepare(
         `SELECT * FROM users
           WHERE (? IS NULL OR role = ?)
-            AND (? IS NULL OR full_name LIKE ? OR phone LIKE ?)
+            AND (? IS NULL OR full_name LIKE ? OR contact LIKE ?)
           ORDER BY created_at DESC LIMIT 500`
       )
       .all(role, role, req.query.q || null, `%${req.query.q || ''}%`, `%${req.query.q || ''}%`);
@@ -31,20 +31,20 @@ usersRouter.get(
 usersRouter.post(
   '/',
   wrap((req, res) => {
-    const phone = normalizePhone(req.body.phone);
-    if (!phone) throw bad('Укажите корректный номер телефона');
+    const contact = normalizeContact(req.body.contact);
+    if (!contact) throw bad('Укажите корректный контакт');
     if (!ROLES.includes(req.body.role)) throw bad('Некорректная роль');
     if (typeof req.body.password !== 'string' || req.body.password.length < 8)
       throw bad('Пароль должен содержать минимум 8 символов');
-    if (db.prepare(`SELECT id FROM users WHERE phone = ?`).get(phone)) throw bad('Пользователь с таким номером уже есть');
+    if (db.prepare(`SELECT id FROM users WHERE contact = ?`).get(contact)) throw bad('Пользователь с таким контактом уже есть');
 
     const info = db
       .prepare(
-        `INSERT INTO users (phone, password_hash, role, full_name, city, phone_verified, application_status)
-         VALUES (?, ?, ?, ?, ?, 1, ?)`
+        `INSERT INTO users (contact, password_hash, role, full_name, city, application_status)
+         VALUES (?, ?, ?, ?, ?, ?)`
       )
       .run(
-        phone,
+        contact,
         hashPassword(req.body.password),
         req.body.role,
         req.body.full_name || null,
@@ -119,7 +119,7 @@ usersRouter.post(
 
     for (const id of volunteerIds) {
       logActivity(req.user.id, id, 'coordinator_assigned', coordinator ? String(coordinator.id) : 'снят');
-      if (coordinator) notify(id, ...TEMPLATES.coordinatorAssigned(coordinator.full_name || coordinator.phone));
+      if (coordinator) notify(id, ...TEMPLATES.coordinatorAssigned(coordinator.full_name || coordinator.contact));
     }
     res.json({ ok: true, updated: volunteerIds.length });
   })
@@ -165,7 +165,7 @@ usersRouter.delete(
     if (!user) throw notFound('Пользователь не найден');
     if (user.id === req.user.id) throw bad('Нельзя удалить собственный аккаунт');
     db.prepare(`DELETE FROM users WHERE id = ?`).run(user.id);
-    logActivity(req.user.id, null, 'user_deleted', `${user.phone} (${user.full_name || 'без имени'})`);
+    logActivity(req.user.id, null, 'user_deleted', `${user.contact} (${user.full_name || 'без имени'})`);
     res.json({ ok: true });
   })
 );

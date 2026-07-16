@@ -13,7 +13,7 @@ db.exec(`
 -- ПОЛЬЗОВАТЕЛИ --------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  phone         TEXT NOT NULL UNIQUE,
+  contact       TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   role          TEXT NOT NULL DEFAULT 'volunteer'
                 CHECK (role IN ('volunteer','coordinator','admin')),
@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS users (
   city          TEXT,
   email         TEXT,
   photo_url     TEXT,
-  phone_verified INTEGER NOT NULL DEFAULT 0,
   is_blocked    INTEGER NOT NULL DEFAULT 0,
   volunteer_type TEXT CHECK (volunteer_type IN ('organization','party') OR volunteer_type IS NULL),
   -- статус заявки: draft | pending | approved | rejected | revision
@@ -33,19 +32,6 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
--- КОДЫ ПОДТВЕРЖДЕНИЯ ТЕЛЕФОНА ------------------------------------------------
-CREATE TABLE IF NOT EXISTS phone_codes (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  phone      TEXT NOT NULL,
-  code       TEXT NOT NULL,
-  purpose    TEXT NOT NULL CHECK (purpose IN ('register','reset')),
-  expires_at TEXT NOT NULL,
-  used       INTEGER NOT NULL DEFAULT 0,
-  attempts   INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_phone_codes_phone ON phone_codes(phone, purpose);
 
 -- АНКЕТЫ ---------------------------------------------------------------------
 -- Анкета хранится как набор ответов + денормализованные поля для фильтров.

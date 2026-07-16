@@ -56,7 +56,7 @@ const fmtDate = (v, withTime = true) => {
   });
 };
 
-const fmtPhone = (p) => String(p || '').replace(/^(\+\d)(\d{3})(\d{3})(\d{2})(\d{2})$/, '$1 $2 $3-$4-$5');
+const fmtContact = (p) => String(p || '');
 
 const STATUS_LABEL = {
   draft: 'Анкета не заполнена',
@@ -143,7 +143,7 @@ function layout(inner) {
         <div class="brand">Платформа<br />волонтеров<span>${ROLE_LABEL[state.user.role]}</span></div>
         <nav>${links}</nav>
         <div class="rail-foot">
-          <div class="who">${esc(state.user.full_name || fmtPhone(state.user.phone))}</div>
+          <div class="who">${esc(state.user.full_name || fmtContact(state.user.contact))}</div>
           <button class="btn-quiet" id="theme-toggle" style="color:#c9ddd5">Сменить тему</button>
           <button class="btn-ghost btn-sm" id="logout" style="color:#c9ddd5;border-color:rgba(255,255,255,.2)">Выйти</button>
         </div>
@@ -216,16 +216,16 @@ function authScreen(tab = 'login') {
 
 function loginForm() {
   $('#auth-body').innerHTML = `
-    <div class="field"><label for="phone">Номер телефона</label><input id="phone" type="tel" placeholder="+7 701 000 00 01" autocomplete="username" /></div>
+    <div class="field"><label for="contact">Telegram или Email</label><input id="contact" type="text" placeholder="@username или name@mail.com" autocomplete="username" /></div>
     <div class="field"><label for="password">Пароль</label><input id="password" type="password" autocomplete="current-password" /></div>
     <button id="submit" style="width:100%">Войти</button>
-    <p class="hint" style="margin-top:12px">Демо-доступ: +7 701 000 00 01 / password123</p>`;
+    <p class="hint" style="margin-top:12px">Демо-доступ: @admin / password123</p>`;
 
   const submit = async () => {
     try {
       const data = await api('/auth/login', {
         method: 'POST',
-        body: { phone: $('#phone').value, password: $('#password').value },
+        body: { contact: $('#contact').value, password: $('#password').value },
       });
       state.token = data.token;
       localStorage.setItem('token', data.token);
@@ -242,33 +242,17 @@ function loginForm() {
 
 function registerForm() {
   $('#auth-body').innerHTML = `
-    <div class="field"><label for="phone">Номер телефона</label><input id="phone" type="tel" placeholder="+7 700 000 00 00" /></div>
-    <button id="send-code" class="btn-ghost" style="width:100%">Получить код</button>
-    <div id="step2" hidden style="margin-top:14px">
-      <div class="field"><label for="code">Код из SMS</label><input id="code" inputmode="numeric" maxlength="6" /></div>
-      <div class="field"><label for="name">Имя и фамилия</label><input id="name" /></div>
-      <div class="field"><label for="password">Пароль</label><input id="password" type="password" /><div class="hint">Минимум 8 символов</div></div>
-      <button id="submit" style="width:100%">Создать аккаунт</button>
-    </div>`;
-
-  $('#send-code').onclick = async () => {
-    try {
-      const data = await api('/auth/request-code', { method: 'POST', body: { phone: $('#phone').value, purpose: 'register' } });
-      $('#step2').hidden = false;
-      toast(data.devCode ? `Код для входа в демо: ${data.devCode}` : 'Код отправлен на телефон');
-      if (data.devCode) $('#code').value = data.devCode;
-    } catch (e) {
-      toast(e.message, 'err');
-    }
-  };
+    <div class="field"><label for="contact">Telegram или Email</label><input id="contact" type="text" placeholder="@username или name@mail.com" /></div>
+    <div class="field"><label for="name">Имя и фамилия</label><input id="name" /></div>
+    <div class="field"><label for="password">Пароль</label><input id="password" type="password" /><div class="hint">Минимум 8 символов</div></div>
+    <button id="submit" style="width:100%">Создать аккаунт</button>`;
 
   $('#submit').onclick = async () => {
     try {
       const data = await api('/auth/register', {
         method: 'POST',
         body: {
-          phone: $('#phone').value,
-          code: $('#code').value,
+          contact: $('#contact').value,
           password: $('#password').value,
           full_name: $('#name').value,
         },
@@ -285,37 +269,7 @@ function registerForm() {
 }
 
 function resetForm() {
-  $('#auth-body').innerHTML = `
-    <div class="field"><label for="phone">Номер телефона</label><input id="phone" type="tel" /></div>
-    <button id="send-code" class="btn-ghost" style="width:100%">Получить код</button>
-    <div id="step2" hidden style="margin-top:14px">
-      <div class="field"><label for="code">Код из SMS</label><input id="code" inputmode="numeric" maxlength="6" /></div>
-      <div class="field"><label for="password">Новый пароль</label><input id="password" type="password" /></div>
-      <button id="submit" style="width:100%">Сохранить пароль</button>
-    </div>`;
-
-  $('#send-code').onclick = async () => {
-    try {
-      const data = await api('/auth/request-code', { method: 'POST', body: { phone: $('#phone').value, purpose: 'reset' } });
-      $('#step2').hidden = false;
-      if (data.devCode) $('#code').value = data.devCode;
-      toast(data.devCode ? `Код для входа в демо: ${data.devCode}` : 'Код отправлен на телефон');
-    } catch (e) {
-      toast(e.message, 'err');
-    }
-  };
-  $('#submit').onclick = async () => {
-    try {
-      await api('/auth/reset-password', {
-        method: 'POST',
-        body: { phone: $('#phone').value, code: $('#code').value, password: $('#password').value },
-      });
-      toast('Пароль обновлен. Войдите с новым паролем');
-      authScreen('login');
-    } catch (e) {
-      toast(e.message, 'err');
-    }
-  };
+  $('#auth-body').innerHTML = `<div class="hint" style="margin-top:20px; text-align:center;">Для восстановления пароля обратитесь к администратору платформы.</div>`;
 }
 
 /* ============================================================
@@ -402,7 +356,7 @@ async function applicationPage() {
             <option value="male" ${state.user.gender === 'male' ? 'selected' : ''}>Мужской</option></select></div>
           <div class="field"><label for="city">Город</label><input id="city" required value="${esc(state.user.city || '')}" /></div>
           <div class="field"><label for="email">Почта</label><input id="email" type="email" value="${esc(state.user.email || '')}" /></div>
-          <div class="field"><label for="phone_ro">Телефон</label><input id="phone_ro" value="${fmtPhone(state.user.phone)}" disabled /></div>
+          <div class="field"><label for="contact_ro">Контакт</label><input id="contact_ro" value="${fmtContact(state.user.contact)}" disabled /></div>
         </div>
       </fieldset>
 
@@ -502,7 +456,7 @@ async function profilePage() {
   render(`
     <div class="page-head">
       <div><h1>${esc(u.full_name || 'Личный кабинет')}</h1>
-        <div class="sub">${fmtPhone(u.phone)} · ${esc(u.city || 'город не указан')} ${u.age ? `· ${u.age} лет` : ''}</div></div>
+        <div class="sub">${fmtContact(u.contact)} · ${esc(u.city || 'город не указан')} ${u.age ? `· ${u.age} лет` : ''}</div></div>
       <div class="row">
         <span class="tag ${STATUS_TONE[u.application_status]}">${STATUS_LABEL[u.application_status]}</span>
         ${u.volunteer_type ? `<span class="tag">${TYPE_LABEL[u.volunteer_type]}</span>` : ''}
@@ -529,7 +483,7 @@ async function profilePage() {
       <div class="card metric"><div class="label">Мероприятий пройдено</div><div class="value">${u.events_count}</div></div>
       <div class="card metric"><div class="label">Координатор</div>
         <div class="value" style="font-size:17px;margin-top:10px">${esc(u.coordinator?.full_name || 'Не закреплен')}</div>
-        ${u.coordinator ? `<div class="small muted">${fmtPhone(u.coordinator.phone)}</div>` : ''}</div>
+        ${u.coordinator ? `<div class="small muted">${fmtContact(u.coordinator.contact)}</div>` : ''}</div>
     </div>
 
     <div class="grid cols-2" style="margin-top:14px">
@@ -765,7 +719,7 @@ async function eventTeamPage(eventId) {
   const rows = data.items
     .map(
       (r) => `<tr data-reg="${r.id}">
-        <td><strong>${esc(r.volunteer.full_name || '—')}</strong><div class="small muted">${fmtPhone(r.volunteer.phone)} · ${esc(r.volunteer.city || '')}</div></td>
+        <td><strong>${esc(r.volunteer.full_name || '—')}</strong><div class="small muted">${fmtContact(r.volunteer.contact)} · ${esc(r.volunteer.city || '')}</div></td>
         <td>${r.volunteer.skills.slice(0, 3).map((s) => `<span class="tag">${esc(skillTitle(s))}</span>`).join(' ') || '<span class="muted">—</span>'}</td>
         <td class="small muted">${r.volunteer.total_hours} ч · ${r.volunteer.events_count} мер.</td>
         <td><span class="tag ${r.status === 'accepted' ? 'pine' : r.status === 'rejected' ? 'danger' : 'amber'}">${REG_STATUS[r.status]}</span></td>
@@ -876,7 +830,7 @@ async function teamPage() {
           data.members.length
             ? data.members
                 .map(
-                  (m) => `<tr><td><strong>${esc(m.full_name || '—')}</strong><div class="small muted">${fmtPhone(m.phone)}</div></td>
+                  (m) => `<tr><td><strong>${esc(m.full_name || '—')}</strong><div class="small muted">${fmtContact(m.contact)}</div></td>
                     <td class="muted">${esc(m.city || '—')}</td>
                     <td><span class="tag">${TYPE_LABEL[m.volunteer_type] || '—'}</span></td>
                     <td><strong>${m.total_hours}</strong>${meter(m.total_hours)}</td>
@@ -992,7 +946,7 @@ async function moderationPage() {
               (a) => `<article class="card">
                 <div class="spread">
                   <div><h2>${esc(a.user.full_name || 'Без имени')}</h2>
-                    <div class="small muted">${fmtPhone(a.user.phone)} · ${esc(a.user.city || '')} · ${a.user.age ?? '?'} лет · ${TYPE_LABEL[a.volunteer_type]}</div></div>
+                    <div class="small muted">${fmtContact(a.user.contact)} · ${esc(a.user.city || '')} · ${a.user.age ?? '?'} лет · ${TYPE_LABEL[a.volunteer_type]}</div></div>
                   <div class="row"><span class="tag ${STATUS_TONE[a.status]}">${STATUS_LABEL[a.status]}</span>
                     <span class="small muted">${fmtDate(a.submitted_at, false)}</span></div>
                 </div>
@@ -1125,7 +1079,7 @@ async function basePage() {
                 (v) => `<tr>
                   <td><input type="checkbox" class="pick" value="${v.id}" /></td>
                   <td><strong style="cursor:pointer" data-card="${v.id}">${esc(v.full_name || '—')}</strong>
-                    <div class="small muted">${fmtPhone(v.phone)}</div></td>
+                    <div class="small muted">${fmtContact(v.contact)}</div></td>
                   <td>${v.age ?? '—'}</td>
                   <td class="muted">${esc(v.city || '—')}</td>
                   <td class="small">${TYPE_LABEL[v.volunteer_type] || '—'}</td>
@@ -1228,7 +1182,7 @@ async function volunteerCard(id) {
     `<div class="row" style="margin-bottom:12px">
       <span class="tag ${STATUS_TONE[u.application_status]}">${STATUS_LABEL[u.application_status]}</span>
       <span class="tag">${TYPE_LABEL[u.volunteer_type] || '—'}</span>
-      <span class="small muted">${fmtPhone(u.phone)} · ${esc(u.city || '')} · ${u.age ?? '?'} лет</span>
+      <span class="small muted">${fmtContact(u.contact)} · ${esc(u.city || '')} · ${u.age ?? '?'} лет</span>
     </div>
     <div class="grid cols-2 small">
       <div><strong>Часы:</strong> ${u.total_hours} · <strong>Мероприятий:</strong> ${u.events_count}<br />
@@ -1308,7 +1262,7 @@ async function matchPage() {
             <thead><tr><th>Кандидат</th><th>Совпадения</th><th>Город</th><th>Опыт</th><th>Активность</th><th>Ранг</th></tr></thead>
             <tbody>${items
               .map(
-                (v) => `<tr><td><strong>${esc(v.full_name || '—')}</strong><div class="small muted">${fmtPhone(v.phone)}</div></td>
+                (v) => `<tr><td><strong>${esc(v.full_name || '—')}</strong><div class="small muted">${fmtContact(v.contact)}</div></td>
                   <td>${v.matched_skills.map((s) => `<span class="tag pine">${esc(s)}</span>`).join(' ')}</td>
                   <td class="muted">${esc(v.city || '—')}</td>
                   <td class="small">${v.total_hours} ч · ${v.events_count} мер.</td>
@@ -1447,7 +1401,7 @@ async function usersPage() {
       <tbody>${items
         .map(
           (u) => `<tr>
-            <td><strong>${esc(u.full_name || '—')}</strong><div class="small muted">${fmtPhone(u.phone)}</div></td>
+            <td><strong>${esc(u.full_name || '—')}</strong><div class="small muted">${fmtContact(u.contact)}</div></td>
             <td><select class="btn-sm" data-role-of="${u.id}" style="width:150px">
               ${Object.entries(ROLE_LABEL).map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
             <td class="muted">${esc(u.city || '—')}</td>
@@ -1535,7 +1489,7 @@ async function usersPage() {
     modal(
       'Новый пользователь',
       `<div class="grid cols-2">
-        <div class="field"><label for="u_phone">Телефон</label><input id="u_phone" /></div>
+        <div class="field"><label for="u_contact">Контакт (TG/Email)</label><input id="u_contact" /></div>
         <div class="field"><label for="u_name">ФИО</label><input id="u_name" /></div>
         <div class="field"><label for="u_city">Город</label><input id="u_city" /></div>
         <div class="field"><label for="u_role">Роль</label><select id="u_role">
@@ -1546,7 +1500,7 @@ async function usersPage() {
         await api('/users', {
           method: 'POST',
           body: {
-            phone: $('#u_phone').value,
+            contact: $('#u_contact').value,
             full_name: $('#u_name').value,
             city: $('#u_city').value,
             role: $('#u_role').value,

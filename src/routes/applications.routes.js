@@ -127,7 +127,7 @@ applicationsRouter.get(
     const status = req.query.status || 'pending';
     const rows = db
       .prepare(
-        `SELECT a.*, u.full_name, u.phone, u.city, u.birth_date
+        `SELECT a.*, u.full_name, u.contact, u.city, u.birth_date
            FROM applications a JOIN users u ON u.id = a.user_id
           WHERE a.id = (SELECT MAX(id) FROM applications WHERE user_id = a.user_id)
             AND (? = 'all' OR a.status = ?)
@@ -137,7 +137,7 @@ applicationsRouter.get(
     res.json({
       items: rows.map((r) => ({
         ...publicApplication(r),
-        user: { id: r.user_id, full_name: r.full_name, phone: r.phone, city: r.city, age: ageFrom(r.birth_date) },
+        user: { id: r.user_id, full_name: r.full_name, contact: r.contact, city: r.city, age: ageFrom(r.birth_date) },
       })),
     });
   })
