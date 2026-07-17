@@ -33,7 +33,12 @@ app.get('/api/setup', async (_req, res) => {
   }
 });
 
+import { publicRouter } from './routes/public.routes.js';
+import { adminRouter } from './routes/admin.routes.js';
+
 app.use('/api/auth', authRouter);
+app.use('/api/public', publicRouter);
+app.use('/api/admin', adminRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/events', eventsRouter);
