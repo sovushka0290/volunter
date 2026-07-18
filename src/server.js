@@ -23,6 +23,8 @@ import { setupDb } from './setup_db.js';
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
+app.get('/api/env', (_req, res) => res.json({ keys: Object.keys(process.env) }));
+
 app.get('/api/setup', async (_req, res) => {
   try {
     await setupDb();
