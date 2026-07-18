@@ -24,7 +24,8 @@ export async function saveJson(filename, data) {
     await put(filename, JSON.stringify(data), { 
       access: 'private', 
       token: TOKEN, 
-      addRandomSuffix: false 
+      addRandomSuffix: false,
+      allowOverwrite: true
     });
   } catch (e) {
     console.error('Error saving blob:', e);
