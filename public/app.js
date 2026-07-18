@@ -188,6 +188,19 @@ async function renderAdmin() {
       </header>
       
       <div class="card">
+        <h2>Создать Анонс</h2>
+        <input type="text" id="ev-title" placeholder="Название (обязательно)" />
+        <textarea id="ev-desc" rows="3" placeholder="Описание"></textarea>
+        <input type="text" id="ev-loc" placeholder="Локация (Место)" />
+        <input type="datetime-local" id="ev-date" />
+        <div class="question-group">
+          <label>Баннер (Картинка)</label>
+          <input type="file" id="ev-img" accept="image/*" />
+        </div>
+        <button class="btn btn-primary" id="btn-create">Опубликовать Анонс</button>
+      </div>
+
+      <div class="card">
         <h2>Анкеты (${qs.length})</h2>
         <div style="overflow-x:auto;">
           <table>
@@ -207,6 +220,43 @@ async function renderAdmin() {
     </div>
   `;
   
+  $('#btn-create').onclick = async () => {
+    const title = $('#ev-title').value;
+    const desc = $('#ev-desc').value;
+    const loc = $('#ev-loc').value;
+    const date = $('#ev-date').value;
+    const imgFile = $('#ev-img').files[0];
+    
+    if (!title || !date) return toast('Укажите Название и Дату!', 'error');
+    
+    try {
+      $('#btn-create').disabled = true;
+      $('#btn-create').textContent = 'Загрузка...';
+      
+      let banner_base64 = null;
+      if (imgFile) {
+        banner_base64 = await new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result);
+          reader.onerror = rej;
+          reader.readAsDataURL(imgFile);
+        });
+      }
+      
+      await api('/admin/events', {
+        method: 'POST',
+        body: { title, description: desc, location: loc, starts_at: date, banner_base64 }
+      });
+      
+      toast('Анонс успешно опубликован!', 'success');
+      setTimeout(() => window.location.hash = '#feed', 1000);
+    } catch(e) {
+      toast(e.message, 'error');
+      $('#btn-create').disabled = false;
+      $('#btn-create').textContent = 'Опубликовать Анонс';
+    }
+  };
+
   $('#btn-logout').onclick = (e) => {
     e.preventDefault();
     localStorage.removeItem('token');

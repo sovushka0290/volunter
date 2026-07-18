@@ -81,6 +81,7 @@ export async function publicEvent(e, viewerId) {
     ends_at: e.ends_at,
     location: e.location,
     city: e.city,
+    banner_url: e.banner_url,
     needed_count: e.needed_count,
     requirements: e.requirements,
     directions: parseJson(e.directions_json, []),
