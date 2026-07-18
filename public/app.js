@@ -29,7 +29,7 @@ const api = async (path, opts = {}) => {
 // --- I18N ---
 let lang = localStorage.getItem('lang') || 'ru';
 
-const setLang = (l) => {
+window.setLang = (l) => {
   lang = l;
   localStorage.setItem('lang', l);
   route();
