@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { db } from '../db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { wrap } from '../utils/helpers.js';
-
 import { put } from '@vercel/blob';
+import { getJson, saveJson } from '../blob_db.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('admin'));
@@ -28,10 +27,18 @@ adminRouter.post(
       banner_url = blob.url;
     }
 
-    await db.prepare(`
-      INSERT INTO events (title, description, location, starts_at, banner_url, status)
-      VALUES (?, ?, ?, ?, ?, 'published')
-    `).run(title, description || null, location || null, starts_at, banner_url);
+    const events = await getJson('database_events.json', []);
+    events.push({
+      id: Date.now(),
+      title,
+      description: description || null,
+      location: location || null,
+      starts_at,
+      banner_url,
+      status: 'published',
+      created_at: new Date().toISOString()
+    });
+    await saveJson('database_events.json', events);
 
     res.json({ ok: true, banner_url });
   })
@@ -39,17 +46,18 @@ adminRouter.post(
 
 /** Получить список всех анкет */
 adminRouter.get(
-
   '/questionnaires',
   wrap(async (req, res) => {
-    const rows = await db.prepare(`SELECT * FROM questionnaires ORDER BY created_at DESC`).all();
-    res.json({
-      items: rows.map(r => ({
-        id: r.id,
-        tg_username: r.tg_username,
-        answers: JSON.parse(r.answers_json),
-        created_at: r.created_at
-      }))
+    const qs = await getJson('database_questionnaires.json', []);
+    qs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    // Parse answers JSON for the frontend
+    const items = qs.map(q => {
+      let answers = {};
+      try { answers = JSON.parse(q.answers_json); } catch(e) {}
+      return { ...q, answers };
     });
+
+    res.json({ items });
   })
 );
