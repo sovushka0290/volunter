@@ -63,15 +63,68 @@ const t = (key) => I18N[key]?.[lang] || key;
 const QUESTIONS = [
   { id: 'q1', type: 'text', text: { ru: 'Как к вам обращаться?', kk: 'Сізге қалай жүгінейік?' } },
   { id: 'q2', type: 'text', text: { ru: 'Сколько вам лет?', kk: 'Жасыңыз нешеде?' } },
-  { id: 'q3', type: 'choice', text: { ru: 'Был ли у вас опыт волонтерства ранее?', kk: 'Бұрын ерікті болдыңыз ба?' }, options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } },
-  { id: 'q4', type: 'choice', text: { ru: 'Как часто вы можете участвовать?', kk: 'Қаншалықты жиі қатыса аласыз?' }, options: { ru: ['Часто', 'Редко'], kk: ['Жиі', 'Сирек'] } },
-  { id: 'q5', type: 'text', text: { ru: 'Что вас мотивирует быть волонтером?', kk: 'Ерікті болуға сізді не ынталандырады?' } },
-  { id: 'q6', type: 'choice', text: { ru: 'Вы готовы работать в команде?', kk: 'Командада жұмыс істеуге дайынсыз ба?' }, options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } },
-  { id: 'q7', type: 'text', text: { ru: 'Ваши главные навыки?', kk: 'Негізгі дағдыларыңыз?' } },
-  { id: 'q8', type: 'text', text: { ru: 'Укажите ваш Telegram (@username) для связи', kk: 'Байланыс үшін Telegram (@username) көрсетіңіз' } }
+  { id: 'q_city', type: 'text', text: { ru: 'Из какого вы города?', kk: 'Қай қаладансыз?' } },
+  { 
+    id: 'q_exp', 
+    type: 'choice', 
+    text: { ru: 'Был ли у вас опыт волонтерства ранее?', kk: 'Бұрын ерікті болдыңыз ба?' }, 
+    options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } 
+  },
+  { 
+    id: 'q_exp_desc', 
+    condition: (ans) => ans['q_exp'] === 'Да' || ans['q_exp'] === 'Иә',
+    type: 'text', 
+    text: { ru: 'Расскажите кратко о вашем опыте', kk: 'Тәжірибеңіз туралы қысқаша айтып беріңіз' } 
+  },
+  { 
+    id: 'q_freq', 
+    type: 'choice', 
+    text: { ru: 'Как часто вы можете помогать?', kk: 'Қаншалықты жиі көмектесе аласыз?' }, 
+    options: { ru: ['Каждую неделю', 'Раз в месяц', 'По возможности'], kk: ['Апта сайын', 'Айына бір рет', 'Мүмкіндігінше'] } 
+  },
+  { 
+    id: 'q_dir', 
+    type: 'choice', 
+    text: { ru: 'Какое направление вам ближе?', kk: 'Қай бағыт сізге жақын?' }, 
+    options: { ru: ['Медиа (фото, видео, соцсети)', 'Организация ивентов', 'Физическая помощь'], kk: ['Медиа (фото, видео, СЖ)', 'Іс-шараларды ұйымдастыру', 'Физикалық көмек'] } 
+  },
+  { 
+    id: 'q_dir_media', 
+    condition: (ans) => (ans['q_dir'] || '').includes('Медиа'),
+    type: 'choice', 
+    text: { ru: 'Умеете ли вы монтировать видео?', kk: 'Видео монтаждай аласыз ба?' }, 
+    options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } 
+  },
+  { 
+    id: 'q_dir_org', 
+    condition: (ans) => (ans['q_dir'] || '').includes('Организация') || (ans['q_dir'] || '').includes('ұйымдастыру'),
+    type: 'choice', 
+    text: { ru: 'Легко ли вы находите общий язык с незнакомцами?', kk: 'Бейтаныс адамдармен тез тіл табысасыз ба?' }, 
+    options: { ru: ['Да', 'Зависит от ситуации', 'Нет'], kk: ['Иә', 'Жағдайға байланысты', 'Жоқ'] } 
+  },
+  { 
+    id: 'q_dir_phys', 
+    condition: (ans) => (ans['q_dir'] || '').includes('Физическая') || (ans['q_dir'] || '').includes('Физикалық'),
+    type: 'choice', 
+    text: { ru: 'Готовы ли вы переносить тяжести (коробки, стулья)?', kk: 'Ауыр заттарды тасуға дайынсыз ба (қораптар, орындықтар)?' }, 
+    options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } 
+  },
+  { id: 'q_tg', type: 'text', text: { ru: 'Укажите ваш Telegram (@username) для связи', kk: 'Байланыс үшін Telegram (@username) көрсетіңіз' } }
 ];
 
 let quizState = { step: 0, answers: {} };
+
+function getNextStep(currentStep) {
+  let next = currentStep + 1;
+  while (next < QUESTIONS.length) {
+    const q = QUESTIONS[next];
+    if (!q.condition || q.condition(quizState.answers)) {
+      return next;
+    }
+    next++;
+  }
+  return next;
+}
 
 // --- ROUTING ---
 window.addEventListener('hashchange', route);
@@ -79,7 +132,13 @@ function route() {
   const hash = window.location.hash || '#home';
   if (hash === '#home') renderHome();
   else if (hash === '#feed') renderFeed();
-  else if (hash === '#quiz') renderQuiz();
+  else if (hash === '#quiz') {
+    // If starting fresh, make sure we skip conditionally blocked questions on step 0
+    if (quizState.step === 0 && QUESTIONS[0].condition && !QUESTIONS[0].condition(quizState.answers)) {
+      quizState.step = getNextStep(-1);
+    }
+    renderQuiz();
+  }
   else if (hash === '#admin') renderAdmin();
 }
 
@@ -177,7 +236,7 @@ function renderQuiz() {
       if (!quizState.answers[q.id]) return showToast(t('err_choice'));
     }
     
-    quizState.step++;
+    quizState.step = getNextStep(quizState.step);
     renderQuiz();
   };
 }
@@ -191,7 +250,7 @@ async function renderQuizFinished() {
   `;
 
   try {
-    const tgUsername = quizState.answers['q8'] || 'unknown'; // q8 is telegram
+    const tgUsername = quizState.answers['q_tg'] || 'unknown';
     await api('/public/questionnaires', {
       method: 'POST',
       body: JSON.stringify({ tg_username: tgUsername, answers: quizState.answers })
