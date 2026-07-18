@@ -3,12 +3,12 @@ const app = () => document.getElementById('app');
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const showToast = (msg) => {
-  const container = document.getElementById('toasts') || (() => {
-    const el = document.createElement('div');
-    el.id = 'toasts'; el.className = 'toasts';
-    document.body.appendChild(el);
-    return el;
-  })();
+  let container = document.getElementById('toasts');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toasts'; container.className = 'toasts';
+    document.body.appendChild(container);
+  }
   const t = document.createElement('div');
   t.className = 'toast'; t.textContent = msg;
   container.appendChild(t);
@@ -22,32 +22,53 @@ const api = async (path, opts = {}) => {
   
   const res = await fetch(`/api${path}`, { ...opts, headers });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Ошибка запроса');
+  if (!res.ok) throw new Error(data.error || 'Ошибка запроса / Сұрау қатесі');
   return data;
 };
 
-// --- DATA ---
+// --- I18N ---
+let lang = localStorage.getItem('lang') || 'ru';
+
+const setLang = (l) => {
+  lang = l;
+  localStorage.setItem('lang', l);
+  route();
+};
+
+const I18N = {
+  home_title: { ru: 'Волонтерское движение', kk: 'Еріктілер қозғалысы' },
+  home_subtitle: { ru: 'Присоединяйтесь к нашей команде и следите за анонсами.', kk: 'Біздің командаға қосылыңыз және аңдатпаларды оқыңыз.' },
+  btn_quiz: { ru: 'Заполнить анкету', kk: 'Сауалнаманы толтыру' },
+  btn_feed: { ru: 'Анонсы мероприятий', kk: 'Іс-шаралар аңдатпасы' },
+  btn_next: { ru: 'ПРОДОЛЖИТЬ', kk: 'ЖАЛҒАСТЫРУ' },
+  placeholder: { ru: 'Ваш ответ...', kk: 'Сіздің жауабыңыз...' },
+  err_empty: { ru: 'Пожалуйста, введите ответ', kk: 'Жауапты енгізіңіз' },
+  err_choice: { ru: 'Выберите один из вариантов', kk: 'Нұсқалардың бірін таңдаңыз' },
+  sending: { ru: 'Отправка анкеты...', kk: 'Сауалнама жіберілуде...' },
+  success_title: { ru: 'Поздравляем!', kk: 'Құттықтаймыз!' },
+  success_text: { ru: 'Ваша анкета успешно отправлена. Мы скоро свяжемся с вами в Telegram.', kk: 'Сауалнама сәтті жіберілді. Біз сізбен Telegram арқылы хабарласамыз.' },
+  btn_home: { ru: 'На главную', kk: 'Басты бетке' },
+  err_send: { ru: 'Ошибка отправки', kk: 'Жіберу қатесі' },
+  btn_retry: { ru: 'Попробовать снова', kk: 'Қайта көру' },
+  feed_back: { ru: '← Назад', kk: '← Артқа' },
+  feed_title: { ru: 'Анонсы', kk: 'Аңдатпалар' },
+  feed_header: { ru: 'Ближайшие мероприятия', kk: 'Алдағы іс-шаралар' },
+  feed_empty: { ru: 'Пока нет доступных анонсов.', kk: 'Әзірге қолжетімді аңдатпалар жоқ.' },
+  location: { ru: 'Не указано', kk: 'Көрсетілмеген' }
+};
+
+const t = (key) => I18N[key]?.[lang] || key;
+
+// --- QUESTIONS ---
 const QUESTIONS = [
-  { id: 'q1', text: 'Как к вам обращаться?', type: 'text' },
-  { id: 'q2', text: 'Сколько вам лет?', type: 'text' },
-  { id: 'q3', text: 'Был ли у вас опыт волонтерства ранее?', type: 'choice', options: ['Да', 'Нет'] },
-  { id: 'q4', text: 'Как часто вы можете участвовать в мероприятиях?', type: 'choice', options: ['Каждые выходные', 'Пару раз в месяц', 'Редко'] },
-  { id: 'q5', text: 'Вы готовы работать в команде?', type: 'choice', options: ['Да, конечно', 'Предпочитаю работать один'] },
-  { id: 'q6', text: 'Умеете ли вы фотографировать/снимать видео?', type: 'choice', options: ['Да, профессионально', 'Да, на телефон', 'Нет'] },
-  { id: 'q7', text: 'Какими иностранными языками вы владеете?', type: 'text' },
-  { id: 'q8', text: 'Вам комфортнее общаться с людьми или работать с документами?', type: 'choice', options: ['Общаться', 'С документами', 'И то, и другое'] },
-  { id: 'q9', text: 'Что вас мотивирует быть волонтером?', type: 'textarea' },
-  { id: 'q10', text: 'Умеете ли вы оказывать первую помощь?', type: 'choice', options: ['Да', 'Проходил(а) курсы', 'Нет'] },
-  { id: 'q11', text: 'Готовы ли вы помогать физически (например, переносить коробки)?', type: 'choice', options: ['Да', 'Нет'] },
-  { id: 'q12', text: 'Знаете ли вы, как вести социальные сети?', type: 'choice', options: ['Да', 'Немного', 'Нет'] },
-  { id: 'q13', text: 'Есть ли у вас водительские права?', type: 'choice', options: ['Да', 'Нет'] },
-  { id: 'q14', text: 'Опишите ваши главные навыки.', type: 'textarea' },
-  { id: 'q15', text: 'Вы легко находите общий язык с незнакомцами?', type: 'choice', options: ['Да', 'Смотря по ситуации', 'Нет'] },
-  { id: 'q16', text: 'Как вы узнали о нас?', type: 'text' },
-  { id: 'q17', text: 'Готовы ли вы к форс-мажорным ситуациям?', type: 'choice', options: ['Да', 'Скорее да', 'Нет'] },
-  { id: 'q18', text: 'Какое направление вам наиболее интересно?', type: 'choice', options: ['Организация', 'Медиа', 'Помощь на местах'] },
-  { id: 'q19', text: 'Есть ли у вас хронические заболевания, о которых нам стоит знать?', type: 'text' },
-  { id: 'q20', text: 'Укажите ваш Telegram (@username) для связи', type: 'text' }
+  { id: 'q1', type: 'text', text: { ru: 'Как к вам обращаться?', kk: 'Сізге қалай жүгінейік?' } },
+  { id: 'q2', type: 'text', text: { ru: 'Сколько вам лет?', kk: 'Жасыңыз нешеде?' } },
+  { id: 'q3', type: 'choice', text: { ru: 'Был ли у вас опыт волонтерства ранее?', kk: 'Бұрын ерікті болдыңыз ба?' }, options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } },
+  { id: 'q4', type: 'choice', text: { ru: 'Как часто вы можете участвовать?', kk: 'Қаншалықты жиі қатыса аласыз?' }, options: { ru: ['Часто', 'Редко'], kk: ['Жиі', 'Сирек'] } },
+  { id: 'q5', type: 'text', text: { ru: 'Что вас мотивирует быть волонтером?', kk: 'Ерікті болуға сізді не ынталандырады?' } },
+  { id: 'q6', type: 'choice', text: { ru: 'Вы готовы работать в команде?', kk: 'Командада жұмыс істеуге дайынсыз ба?' }, options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } },
+  { id: 'q7', type: 'text', text: { ru: 'Ваши главные навыки?', kk: 'Негізгі дағдыларыңыз?' } },
+  { id: 'q8', type: 'text', text: { ru: 'Укажите ваш Telegram (@username) для связи', kk: 'Байланыс үшін Telegram (@username) көрсетіңіз' } }
 ];
 
 let quizState = { step: 0, answers: {} };
@@ -66,18 +87,25 @@ function route() {
 function renderHome() {
   app().innerHTML = `
     <div class="home-container">
-      <button class="admin-circle" id="btn-admin" title="Вход для администратора"></button>
-      <div class="home-logo">🌟</div>
-      <h1>Волонтерское движение</h1>
-      <p style="margin-bottom: 40px; color: var(--text-muted);">Присоединяйтесь к нашей команде и следите за анонсами.</p>
+      <button class="admin-circle" id="btn-admin" title="Admin"></button>
       
-      <a href="#quiz" class="btn">Заполнить анкету</a>
-      <a href="#feed" class="btn btn-secondary">Анонсы мероприятий</a>
+      <div style="position: absolute; top: 20px; right: 20px;">
+        <button class="btn-outline" style="padding: 4px 12px; margin: 0; font-size: 14px; border-radius: 20px;" onclick="setLang(lang === 'ru' ? 'kk' : 'ru')">
+          ${lang === 'ru' ? 'ҚАЗ' : 'РУС'}
+        </button>
+      </div>
+
+      <div class="home-logo">🌟</div>
+      <h1>${t('home_title')}</h1>
+      <p style="margin-bottom: 40px; color: var(--text-muted);">${t('home_subtitle')}</p>
+      
+      <a href="#quiz" class="btn">${t('btn_quiz')}</a>
+      <a href="#feed" class="btn btn-secondary">${t('btn_feed')}</a>
     </div>
   `;
 
   document.getElementById('btn-admin').onclick = async () => {
-    const pwd = prompt('Введите пароль администратора:');
+    const pwd = prompt('Пароль администратора / Әкімші құпия сөзі:');
     if (!pwd) return;
     try {
       const res = await api('/auth/login', {
@@ -86,7 +114,7 @@ function renderHome() {
       localStorage.setItem('token', res.token);
       window.location.hash = '#admin';
     } catch (e) {
-      alert('Неверный пароль');
+      alert('Ошибка / Қате');
     }
   };
 }
@@ -98,20 +126,19 @@ function renderQuiz() {
 
   const progress = (quizState.step / QUESTIONS.length) * 100;
   const val = quizState.answers[q.id] || '';
+  const qText = q.text[lang];
 
   let inputHtml = '';
   if (q.type === 'choice') {
     inputHtml = `<div class="quiz-options">
-      ${q.options.map(o => `
+      ${q.options[lang].map(o => `
         <button class="quiz-option ${val === o ? 'selected' : ''}" data-val="${esc(o)}">
           ${esc(o)}
         </button>
       `).join('')}
     </div>`;
-  } else if (q.type === 'textarea') {
-    inputHtml = `<textarea id="q-input" class="quiz-input quiz-textarea" placeholder="Ваш ответ...">${esc(val)}</textarea>`;
   } else {
-    inputHtml = `<input type="text" id="q-input" class="quiz-input" placeholder="Ваш ответ..." value="${esc(val)}" />`;
+    inputHtml = `<input type="text" id="q-input" class="quiz-input" placeholder="${t('placeholder')}" value="${esc(val)}" />`;
   }
 
   app().innerHTML = `
@@ -122,12 +149,12 @@ function renderQuiz() {
       </div>
       
       <div class="quiz-content">
-        <div class="quiz-question">${esc(q.text)}</div>
+        <div class="quiz-question">${esc(qText)}</div>
         ${inputHtml}
       </div>
 
       <div class="quiz-footer">
-        <button class="btn" id="btn-next">ПРОДОЛЖИТЬ</button>
+        <button class="btn" id="btn-next">${t('btn_next')}</button>
       </div>
     </div>
   `;
@@ -136,7 +163,7 @@ function renderQuiz() {
     document.querySelectorAll('.quiz-option').forEach(btn => {
       btn.onclick = () => {
         quizState.answers[q.id] = btn.getAttribute('data-val');
-        renderQuiz(); // re-render to show selected
+        renderQuiz(); 
       };
     });
   }
@@ -144,10 +171,10 @@ function renderQuiz() {
   document.getElementById('btn-next').onclick = () => {
     if (q.type !== 'choice') {
       const input = document.getElementById('q-input');
-      if (input.value.trim() === '') return showToast('Пожалуйста, введите ответ');
+      if (input.value.trim() === '') return showToast(t('err_empty'));
       quizState.answers[q.id] = input.value.trim();
     } else {
-      if (!quizState.answers[q.id]) return showToast('Выберите один из вариантов');
+      if (!quizState.answers[q.id]) return showToast(t('err_choice'));
     }
     
     quizState.step++;
@@ -158,13 +185,13 @@ function renderQuiz() {
 async function renderQuizFinished() {
   app().innerHTML = `
     <div class="home-container">
-      <h1>Отправка анкеты...</h1>
+      <h1>${t('sending')}</h1>
       <div class="progress-bar" style="width: 200px; margin: 20px auto;"><div class="progress-fill" style="width: 100%"></div></div>
     </div>
   `;
 
   try {
-    const tgUsername = quizState.answers['q20'] || 'unknown';
+    const tgUsername = quizState.answers['q8'] || 'unknown'; // q8 is telegram
     await api('/public/questionnaires', {
       method: 'POST',
       body: JSON.stringify({ tg_username: tgUsername, answers: quizState.answers })
@@ -173,18 +200,19 @@ async function renderQuizFinished() {
     app().innerHTML = `
       <div class="home-container">
         <div class="home-logo">🎉</div>
-        <h1>Поздравляем!</h1>
-        <p style="margin-bottom: 40px; color: var(--text-muted);">Ваша анкета успешно отправлена. Мы скоро свяжемся с вами в Telegram.</p>
-        <a href="#home" class="btn">На главную</a>
+        <h1>${t('success_title')}</h1>
+        <p style="margin-bottom: 40px; color: var(--text-muted);">${t('success_text')}</p>
+        <a href="#home" class="btn">${t('btn_home')}</a>
       </div>
     `;
     quizState = { step: 0, answers: {} };
   } catch (e) {
     app().innerHTML = `
       <div class="home-container">
-        <h1>Ошибка отправки</h1>
+        <h1>${t('err_send')}</h1>
         <p>${esc(e.message)}</p>
-        <button class="btn" onclick="renderQuizFinished()">Попробовать снова</button>
+        <button class="btn" onclick="renderQuizFinished()">${t('btn_retry')}</button>
+        <a href="#home" class="btn btn-outline" style="margin-top: 10px">${t('btn_home')}</a>
       </div>
     `;
   }
@@ -195,24 +223,24 @@ async function renderFeed() {
   app().innerHTML = `
     <div class="layout">
       <div class="top-nav">
-        <a href="#home">← Назад</a>
-        <a href="#feed" class="active">Анонсы</a>
+        <a href="#home">${t('feed_back')}</a>
+        <a href="#feed" class="active">${t('feed_title')}</a>
       </div>
-      <h2>Ближайшие мероприятия</h2>
-      <div id="feed-content">Загрузка...</div>
+      <h2>${t('feed_header')}</h2>
+      <div id="feed-content">Загрузка / Жүктелуде...</div>
     </div>
   `;
   try {
     const { items } = await api('/public/events');
     const container = document.getElementById('feed-content');
     if (!items.length) {
-      container.innerHTML = `<div class="card">Пока нет доступных анонсов.</div>`;
+      container.innerHTML = `<div class="card">${t('feed_empty')}</div>`;
       return;
     }
     container.innerHTML = items.map(e => `
       <div class="card">
         ${e.banner_url ? `<img src="${esc(e.banner_url)}" class="event-banner" alt="Banner">` : ''}
-        <div class="meta">📍 ${esc(e.location || 'Не указано')} | 🕒 ${new Date(e.starts_at).toLocaleString('ru')}</div>
+        <div class="meta">📍 ${esc(e.location || t('location'))} | 🕒 ${new Date(e.starts_at).toLocaleString(lang === 'ru' ? 'ru' : 'kk')}</div>
         <h3>${esc(e.title)}</h3>
         <p>${esc(e.description || '')}</p>
       </div>
@@ -230,9 +258,7 @@ async function renderAdmin() {
     <div class="layout">
       <div class="top-nav">
         <a href="#home">← На главную</a>
-        <div>
-          <button class="btn-outline" style="padding: 4px 12px; margin:0;" onclick="localStorage.removeItem('token'); window.location.hash='#home'">Выйти</button>
-        </div>
+        <button class="btn-outline" style="padding: 4px 12px; margin:0;" onclick="localStorage.removeItem('token'); window.location.hash='#home'">Выйти</button>
       </div>
       <h2>Панель управления</h2>
       
@@ -290,7 +316,7 @@ async function renderAdmin() {
         <h3>@${esc(q.tg_username)}</h3>
         <ul style="padding-left: 20px; color: var(--text-main)">
           ${Object.entries(q.answers).map(([key, val]) => {
-            const qtext = QUESTIONS.find(x => x.id === key)?.text || key;
+            const qtext = QUESTIONS.find(x => x.id === key)?.text?.ru || key;
             return `<li><strong>${esc(qtext)}:</strong> ${esc(val)}</li>`;
           }).join('')}
         </ul>

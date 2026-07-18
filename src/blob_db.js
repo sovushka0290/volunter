@@ -9,7 +9,8 @@ export async function getJson(filename, defaultValue = []) {
     
     blobs.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
     
-    const res = await fetch(blobs[0].url);
+    // For private stores, downloadUrl contains the short-lived access token
+    const res = await fetch(blobs[0].downloadUrl || blobs[0].url);
     if (!res.ok) return defaultValue;
     return await res.json();
   } catch (e) {
@@ -21,7 +22,7 @@ export async function getJson(filename, defaultValue = []) {
 export async function saveJson(filename, data) {
   try {
     await put(filename, JSON.stringify(data), { 
-      access: 'public', 
+      access: 'private', 
       token: TOKEN, 
       addRandomSuffix: false 
     });

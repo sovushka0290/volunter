@@ -23,8 +23,9 @@ adminRouter.post(
       const ext = match[1].split('/')[1] || 'png';
       const filename = `events/banner_${Date.now()}.${ext}`;
       
-      const blob = await put(filename, buffer, { access: 'public' });
-      banner_url = blob.url;
+      const blob = await put(filename, buffer, { access: 'private' });
+      // Use downloadUrl so it can be viewed temporarily, or proxy it later
+      banner_url = blob.downloadUrl || blob.url;
     }
 
     const events = await getJson('database_events.json', []);
