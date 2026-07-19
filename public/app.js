@@ -168,15 +168,15 @@ async function renderFeed() {
         : `<div style="font-size:48px;margin-bottom:8px">${esc(iconId)}</div>`; // fallback for old text emojis
         
       return `
-        <div class="card" style="padding:0; overflow:hidden;">
-          <div style="background:${theme.bg};color:${theme.text};${theme.border ? `border-bottom:${theme.border};` : ''}padding:24px;text-align:center;position:relative;">
-            ${theme.hat ? `<div style="position:absolute;top:0;left:0;right:0;height:12px;background:${theme.hat}"></div>` : ''}
+        <div class="card" style="padding:0; overflow:hidden; position:relative; ${theme.border ? `border:${theme.border};` : ''}">
+          ${theme.hat ? `<div style="position:absolute;top:0;left:0;right:0;height:12px;background:${theme.hat};z-index:10"></div>` : ''}
+          <div style="background:${theme.bg};color:${theme.text};padding:24px;text-align:center;position:relative;${theme.hat ? 'padding-top:36px;' : ''}">
             <div style="position:relative;z-index:2">
               ${renderEmoji}
               <div style="font-size:24px;font-weight:800">${esc(e.title)}</div>
             </div>
           </div>
-          <div style="padding:20px;${theme.border ? `border-left:${theme.border};border-right:${theme.border};border-bottom:${theme.border};border-radius:0 0 var(--radius) var(--radius);` : ''}">
+          <div style="padding:20px;">
             <div class="meta" style="margin-bottom:12px">📍 ${esc(e.location||t('loc_none'))} · 🕒 ${new Date(e.starts_at).toLocaleDateString(lang==='ru'?'ru':'kk')} ${new Date(e.starts_at).toLocaleTimeString(lang==='ru'?'ru':'kk', {hour: '2-digit', minute:'2-digit'})}</div>
             <p style="color:var(--text);margin:0">${esc(e.description||'')}</p>
           </div>
@@ -382,7 +382,7 @@ function updateEventPreview() {
   if (!preview) return;
   const iconObj = window.EVENT_ICONS.find(x => x.id === window._evEmoji) || window.EVENT_ICONS[0];
   preview.innerHTML = `
-    <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);${theme.border ? `border:${theme.border};` : ''}padding:28px 24px;text-align:center;transition:all 0.3s;position:relative;overflow:hidden;box-shadow:var(--shadow)">
+    <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);${theme.border ? `border:${theme.border};` : ''}padding:28px 24px;text-align:center;transition:all 0.3s;position:relative;overflow:hidden;box-shadow:var(--shadow);${theme.hat ? 'padding-top:40px;' : ''}">
       ${theme.hat ? `<div style="position:absolute;top:0;left:0;right:0;height:12px;background:${theme.hat}"></div>` : ''}
       <div style="width:48px;height:48px;margin:0 auto 12px;position:relative;z-index:2">${iconObj.svg}</div>
       <div style="font-size:22px;font-weight:800;margin-bottom:8px;position:relative;z-index:2">${esc(title)}</div>
@@ -399,7 +399,7 @@ async function renderEventsTab(el) {
       <h3>Создать анонс</h3>
 
       <div id="ev-preview" style="margin-bottom:16px">
-        <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);${theme.border ? `border:${theme.border};` : ''}padding:28px 24px;text-align:center;position:relative;overflow:hidden;box-shadow:var(--shadow)">
+        <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);${theme.border ? `border:${theme.border};` : ''}padding:28px 24px;text-align:center;position:relative;overflow:hidden;box-shadow:var(--shadow);${theme.hat ? 'padding-top:40px;' : ''}">
           ${theme.hat ? `<div style="position:absolute;top:0;left:0;right:0;height:12px;background:${theme.hat}"></div>` : ''}
           <div style="width:48px;height:48px;margin:0 auto 12px;position:relative;z-index:2">${iconObj.svg}</div>
           <div style="font-size:22px;font-weight:800;position:relative;z-index:2">Так будет выглядеть</div>
