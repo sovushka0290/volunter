@@ -54,7 +54,7 @@ const QUESTIONS = [
   { id: 'q_media', condition: (a) => (a.q_dir||'').includes('Медиа'), type: 'choice', text: { ru: 'Умеете монтировать видео?', kk: 'Видео монтаждай аласыз ба?' }, options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } },
   { id: 'q_org', condition: (a) => (a.q_dir||'').includes('Организация') || (a.q_dir||'').includes('ұйымдастыру'), type: 'choice', text: { ru: 'Легко находите язык с незнакомцами?', kk: 'Бейтаныстармен тез тіл табысасыз ба?' }, options: { ru: ['Да', 'Зависит от ситуации', 'Нет'], kk: ['Иә', 'Жағдайға байланысты', 'Жоқ'] } },
   { id: 'q_phys', condition: (a) => (a.q_dir||'').includes('Физическая') || (a.q_dir||'').includes('Физикалық'), type: 'choice', text: { ru: 'Готовы переносить тяжести?', kk: 'Ауыр заттарды тасуға дайынсыз ба?' }, options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } },
-  { id: 'q_tg', type: 'text', text: { ru: 'Ваш Telegram (@username)', kk: 'Telegram (@username)' } }
+  { id: 'q_wa', type: 'text', text: { ru: 'Ваш номер WhatsApp', kk: 'WhatsApp нөміріңіз' } }
 ];
 
 let quizState = { step: 0, answers: {} };
@@ -70,8 +70,8 @@ function getNextStep(cur) {
 }
 
 // --- ROUTING ---
-let adminTab = 'dashboard';
-let viewingQuestionnaire = null;
+window.adminTab = 'dashboard';
+window.viewingQuestionnaire = null;
 
 window.addEventListener('hashchange', route);
 function route() {
@@ -79,7 +79,7 @@ function route() {
   if (h === '#home') renderHome();
   else if (h === '#feed') renderFeed();
   else if (h === '#quiz') { if (quizState.step === 0) quizState = { step: 0, answers: {} }; renderQuiz(); }
-  else if (h === '#admin') renderAdmin();
+  else if (h === '#admin') window.renderAdmin();
 }
 
 // --- HOME ---
@@ -144,7 +144,7 @@ function renderQuiz() {
 async function renderQuizDone() {
   app().innerHTML = `<div class="home-container"><div class="home-logo">⏳</div><h1>${t('sending')}</h1></div>`;
   try {
-    await api('/public/questionnaires', { method: 'POST', body: JSON.stringify({ tg_username: quizState.answers.q_tg || '?', answers: quizState.answers }) });
+    await api('/public/questionnaires', { method: 'POST', body: JSON.stringify({ tg_username: quizState.answers.q_wa || '?', answers: quizState.answers }) });
     app().innerHTML = `<div class="home-container"><div class="home-logo">🎉</div><h1>${t('done_title')}</h1><p style="margin-bottom:32px;color:var(--text-muted)">${t('done_text')}</p><a href="#home" class="btn">${t('btn_home')}</a></div>`;
     quizState = { step: 0, answers: {} };
   } catch (e) {
@@ -164,11 +164,11 @@ async function renderFeed() {
 }
 
 // --- ADMIN ---
-async function renderAdmin() {
+window.renderAdmin = async function renderAdmin() {
   if (!localStorage.getItem('token')) return window.location.hash = '#home';
 
   // If viewing a single questionnaire
-  if (viewingQuestionnaire) return renderQuestionnaireDetail(viewingQuestionnaire);
+  if (window.viewingQuestionnaire !== null) return renderQuestionnaireDetail(window.viewingQuestionnaire);
 
   app().innerHTML = `
     <div class="layout">
@@ -177,9 +177,9 @@ async function renderAdmin() {
         <span style="font-weight:700;color:var(--accent)">Админ</span>
       </div>
       <div class="tabs">
-        <button class="tab ${adminTab==='dashboard'?'active':''}" onclick="adminTab='dashboard';renderAdmin()">📊 Дашборд</button>
-        <button class="tab ${adminTab==='list'?'active':''}" onclick="adminTab='list';renderAdmin()">📋 Анкеты</button>
-        <button class="tab ${adminTab==='events'?'active':''}" onclick="adminTab='events';renderAdmin()">📢 Анонсы</button>
+        <button class="tab ${window.adminTab==='dashboard'?'active':''}" onclick="window.adminTab='dashboard';window.renderAdmin()">📊 Дашборд</button>
+        <button class="tab ${window.adminTab==='list'?'active':''}" onclick="window.adminTab='list';window.renderAdmin()">📋 Анкеты</button>
+        <button class="tab ${window.adminTab==='events'?'active':''}" onclick="window.adminTab='events';window.renderAdmin()">📢 Анонсы</button>
       </div>
       <div id="admin-content">Загрузка...</div>
     </div>`;
@@ -188,8 +188,8 @@ async function renderAdmin() {
     const { items } = await api('/admin/questionnaires');
     const container = document.getElementById('admin-content');
 
-    if (adminTab === 'dashboard') renderDashboard(container, items);
-    else if (adminTab === 'list') renderQList(container, items);
+    if (window.adminTab === 'dashboard') renderDashboard(container, items);
+    else if (window.adminTab === 'list') renderQList(container, items);
     else renderEventsTab(container);
   } catch (e) {
     document.getElementById('admin-content').innerHTML = `<div class="card"><p>Ошибка: ${esc(e.message)}</p></div>`;
@@ -259,7 +259,7 @@ function renderDashboard(el, items) {
 function renderQList(el, items) {
   if (!items.length) { el.innerHTML = '<div class="card"><p>Анкет пока нет.</p></div>'; return; }
   el.innerHTML = items.map((q, i) => `
-    <div class="card card-clickable" onclick="viewingQuestionnaire=${i};renderAdmin()" style="animation-delay:${i*0.05}s">
+    <div class="card card-clickable" onclick="window.viewingQuestionnaire=${i};window.renderAdmin()" style="animation-delay:${i*0.05}s">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-weight:800;font-size:17px">@${esc(q.tg_username)}</div>
@@ -276,14 +276,14 @@ function renderQList(el, items) {
 
 function renderQuestionnaireDetail(idx) {
   const items = window._adminItems;
-  if (!items || !items[idx]) { viewingQuestionnaire = null; renderAdmin(); return; }
+  if (!items || !items[idx]) { window.viewingQuestionnaire = null; window.renderAdmin(); return; }
   const q = items[idx];
   const a = q.answers || {};
 
   app().innerHTML = `
     <div class="layout">
       <div class="top-nav">
-        <a href="#" onclick="viewingQuestionnaire=null;renderAdmin();return false">← Назад к списку</a>
+        <a href="#" onclick="window.viewingQuestionnaire=null;window.renderAdmin();return false">← Назад к списку</a>
       </div>
       <div class="card" style="margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -303,8 +303,8 @@ function renderQuestionnaireDetail(idx) {
         }).join('')}
       </div>
       <div style="display:flex;gap:8px;margin-top:8px">
-        ${idx > 0 ? `<button class="btn btn-outline btn-small" onclick="viewingQuestionnaire=${idx-1};renderAdmin()">← Пред.</button>` : ''}
-        ${idx < items.length - 1 ? `<button class="btn btn-small" onclick="viewingQuestionnaire=${idx+1};renderAdmin()">След. →</button>` : ''}
+        ${idx > 0 ? `<button class="btn btn-outline btn-small" onclick="window.viewingQuestionnaire=${idx-1};window.renderAdmin()">← Пред.</button>` : ''}
+        ${idx < items.length - 1 ? `<button class="btn btn-small" onclick="window.viewingQuestionnaire=${idx+1};window.renderAdmin()">След. →</button>` : ''}
       </div>
     </div>`;
 }
