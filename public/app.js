@@ -169,11 +169,14 @@ async function renderFeed() {
         
       return `
         <div class="card" style="padding:0; overflow:hidden;">
-          <div style="background:${theme.bg};color:${theme.text};padding:24px;text-align:center;">
-            ${renderEmoji}
-            <div style="font-size:24px;font-weight:800">${esc(e.title)}</div>
+          <div style="background:${theme.bg};color:${theme.text};${theme.border ? `border-bottom:${theme.border};` : ''}padding:24px;text-align:center;position:relative;">
+            ${theme.hat ? `<div style="position:absolute;top:0;left:0;right:0;height:12px;background:${theme.hat}"></div>` : ''}
+            <div style="position:relative;z-index:2">
+              ${renderEmoji}
+              <div style="font-size:24px;font-weight:800">${esc(e.title)}</div>
+            </div>
           </div>
-          <div style="padding:20px;">
+          <div style="padding:20px;${theme.border ? `border-left:${theme.border};border-right:${theme.border};border-bottom:${theme.border};border-radius:0 0 var(--radius) var(--radius);` : ''}">
             <div class="meta" style="margin-bottom:12px">📍 ${esc(e.location||t('loc_none'))} · 🕒 ${new Date(e.starts_at).toLocaleDateString(lang==='ru'?'ru':'kk')} ${new Date(e.starts_at).toLocaleTimeString(lang==='ru'?'ru':'kk', {hour: '2-digit', minute:'2-digit'})}</div>
             <p style="color:var(--text);margin:0">${esc(e.description||'')}</p>
           </div>
@@ -338,7 +341,13 @@ window.EVENT_THEMES = [
   { id: 'warm', bg: 'linear-gradient(135deg, #fa709a, #fee140)', text: '#4a2020' },
   { id: 'dark', bg: 'linear-gradient(135deg, #2d3436, #636e72)', text: '#fff' },
   { id: 'mint', bg: 'linear-gradient(135deg, #a8edea, #fed6e3)', text: '#3d4f5f' },
-  { id: 'fire', bg: 'linear-gradient(135deg, #f7971e, #ffd200)', text: '#5a3800' }
+  { id: 'fire', bg: 'linear-gradient(135deg, #f7971e, #ffd200)', text: '#5a3800' },
+  { id: 'white-border', bg: '#fff', text: '#333', border: '3px solid var(--accent)' },
+  { id: 'dark-border', bg: '#1a1a2e', text: '#fff', border: '3px solid #4facfe' },
+  { id: 'hat-purple', bg: '#fff', text: '#333', hat: 'linear-gradient(135deg, #667eea, #764ba2)' },
+  { id: 'hat-sunset', bg: '#fff', text: '#333', hat: 'linear-gradient(135deg, #f093fb, #f5576c)' },
+  { id: 'soft-pink', bg: '#fff0f5', text: '#d81b60', border: '2px dashed #f48fb1' },
+  { id: 'soft-green', bg: '#f0fff4', text: '#2e7d32', border: '2px dashed #81c784' }
 ];
 
 window.EVENT_ICONS = [
@@ -349,7 +358,13 @@ window.EVENT_ICONS = [
   { id: 'flame', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>' },
   { id: 'target', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>' },
   { id: 'users', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
-  { id: 'trophy', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>' }
+  { id: 'trophy', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>' },
+  { id: 'camera', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>' },
+  { id: 'music', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>' },
+  { id: 'tree', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8v8"/><path d="M12 8a3 3 0 0 0-3-3H7.5"/><path d="M12 8a3 3 0 0 1 3-3h1.5"/><path d="M12 16a4 4 0 0 0-4-4H6.5"/><path d="M12 16a4 4 0 0 1 4-4h1.5"/></svg>' },
+  { id: 'smile', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>' },
+  { id: 'map-pin', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' },
+  { id: 'calendar', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' }
 ];
 
 window._evTheme = 0;
@@ -367,11 +382,12 @@ function updateEventPreview() {
   if (!preview) return;
   const iconObj = window.EVENT_ICONS.find(x => x.id === window._evEmoji) || window.EVENT_ICONS[0];
   preview.innerHTML = `
-    <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);padding:28px 24px;text-align:center;transition:all 0.3s">
-      <div style="width:48px;height:48px;margin:0 auto 12px">${iconObj.svg}</div>
-      <div style="font-size:22px;font-weight:800;margin-bottom:8px">${esc(title)}</div>
-      ${desc ? `<div style="font-size:14px;opacity:0.85;margin-bottom:8px">${esc(desc)}</div>` : ''}
-      ${loc ? `<div style="font-size:13px;opacity:0.7">📍 ${esc(loc)}</div>` : ''}
+    <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);${theme.border ? `border:${theme.border};` : ''}padding:28px 24px;text-align:center;transition:all 0.3s;position:relative;overflow:hidden;box-shadow:var(--shadow)">
+      ${theme.hat ? `<div style="position:absolute;top:0;left:0;right:0;height:12px;background:${theme.hat}"></div>` : ''}
+      <div style="width:48px;height:48px;margin:0 auto 12px;position:relative;z-index:2">${iconObj.svg}</div>
+      <div style="font-size:22px;font-weight:800;margin-bottom:8px;position:relative;z-index:2">${esc(title)}</div>
+      ${desc ? `<div style="font-size:14px;opacity:0.85;margin-bottom:8px;position:relative;z-index:2">${esc(desc)}</div>` : ''}
+      ${loc ? `<div style="font-size:13px;opacity:0.7;position:relative;z-index:2">📍 ${esc(loc)}</div>` : ''}
     </div>`;
 }
 
@@ -383,20 +399,23 @@ async function renderEventsTab(el) {
       <h3>Создать анонс</h3>
 
       <div id="ev-preview" style="margin-bottom:16px">
-        <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);padding:28px 24px;text-align:center">
-          <div style="width:48px;height:48px;margin:0 auto 12px">${iconObj.svg}</div>
-          <div style="font-size:22px;font-weight:800">Так будет выглядеть</div>
+        <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);${theme.border ? `border:${theme.border};` : ''}padding:28px 24px;text-align:center;position:relative;overflow:hidden;box-shadow:var(--shadow)">
+          ${theme.hat ? `<div style="position:absolute;top:0;left:0;right:0;height:12px;background:${theme.hat}"></div>` : ''}
+          <div style="width:48px;height:48px;margin:0 auto 12px;position:relative;z-index:2">${iconObj.svg}</div>
+          <div style="font-size:22px;font-weight:800;position:relative;z-index:2">Так будет выглядеть</div>
         </div>
       </div>
 
       <label class="meta">Векторная иконка</label>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        ${window.EVENT_ICONS.map(i => `<button onclick="pickEmoji('${i.id}')" style="width:48px;height:48px;padding:10px;border-radius:10px;border:2px solid ${window._evEmoji===i.id?'var(--accent)':'var(--border)'};background:${window._evEmoji===i.id?'#ede9fe':'var(--bg-card)'};color:var(--text);cursor:pointer;transition:all 0.2s">${i.svg}</button>`).join('')}
+        ${window.EVENT_ICONS.map(i => `<button onclick="pickEmoji('${i.id}')" style="width:48px;height:48px;padding:10px;border-radius:10px;border:2px solid ${window._evEmoji===i.id?'var(--accent)':'var(--border)'};background:${window._evEmoji===i.id?'#ede9fe':'var(--bg-card)'};color:var(--text);cursor:pointer;transition:all 0.2s" title="${i.id}">${i.svg}</button>`).join('')}
       </div>
 
       <label class="meta">Цвет фона</label>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-        ${window.EVENT_THEMES.map((t, i) => `<button onclick="pickTheme(${i})" style="width:36px;height:36px;border-radius:50%;background:${t.bg};border:3px solid ${window._evTheme===i?'var(--accent)':'transparent'};cursor:pointer;transition:all 0.2s;box-shadow:${window._evTheme===i?'0 0 0 2px var(--accent)':'none'}"></button>`).join('')}
+        ${window.EVENT_THEMES.map((t, i) => `<button onclick="pickTheme(${i})" style="width:36px;height:36px;border-radius:8px;background:${t.bg};border:3px solid ${window._evTheme===i?'var(--accent)':'var(--border)'};cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden" title="${t.id}">
+          ${t.hat ? `<div style="position:absolute;top:0;left:0;right:0;height:6px;background:${t.hat}"></div>` : ''}
+        </button>`).join('')}
       </div>
 
       <input type="text" id="ev-title" class="quiz-input" style="margin-bottom:10px" placeholder="Название ивента" oninput="updateEventPreview()" />
