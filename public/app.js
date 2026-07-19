@@ -162,18 +162,18 @@ async function renderFeed() {
     c.innerHTML = items.map(e => {
       const theme = window.EVENT_THEMES[e.theme_id || 0];
       const emoji = e.emoji || '🎉';
-      return \`
+      return `
         <div class="card" style="padding:0; overflow:hidden;">
-          <div style="background:\${theme.bg};color:\${theme.text};padding:24px;text-align:center;">
-            <div style="font-size:48px;margin-bottom:8px">\${emoji}</div>
-            <div style="font-size:24px;font-weight:800">\${esc(e.title)}</div>
+          <div style="background:${theme.bg};color:${theme.text};padding:24px;text-align:center;">
+            <div style="font-size:48px;margin-bottom:8px">${emoji}</div>
+            <div style="font-size:24px;font-weight:800">${esc(e.title)}</div>
           </div>
           <div style="padding:20px;">
-            <div class="meta" style="margin-bottom:12px">📍 \${esc(e.location||t('loc_none'))} · 🕒 \${new Date(e.starts_at).toLocaleDateString(lang==='ru'?'ru':'kk')} \${new Date(e.starts_at).toLocaleTimeString(lang==='ru'?'ru':'kk', {hour: '2-digit', minute:'2-digit'})}</div>
-            <p style="color:var(--text);margin:0">\${esc(e.description||'')}</p>
+            <div class="meta" style="margin-bottom:12px">📍 ${esc(e.location||t('loc_none'))} · 🕒 ${new Date(e.starts_at).toLocaleDateString(lang==='ru'?'ru':'kk')} ${new Date(e.starts_at).toLocaleTimeString(lang==='ru'?'ru':'kk', {hour: '2-digit', minute:'2-digit'})}</div>
+            <p style="color:var(--text);margin:0">${esc(e.description||'')}</p>
           </div>
         </div>
-      \`;
+      `;
     }).join('');
   } catch (e) { document.getElementById('fc').innerHTML = `Ошибка: ${esc(e.message)}`; }
 }
