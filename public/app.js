@@ -159,7 +159,22 @@ async function renderFeed() {
     const { items } = await api('/public/events');
     const c = document.getElementById('fc');
     if (!items.length) { c.innerHTML = `<div class="card">${t('feed_empty')}</div>`; return; }
-    c.innerHTML = items.map(e => `<div class="card">${e.banner_url ? `<img src="${esc(e.banner_url)}" class="event-banner">` : ''}<div class="meta">📍 ${esc(e.location||t('loc_none'))} · ${new Date(e.starts_at).toLocaleDateString(lang==='ru'?'ru':'kk')}</div><h3>${esc(e.title)}</h3><p style="color:var(--text-muted)">${esc(e.description||'')}</p></div>`).join('');
+    c.innerHTML = items.map(e => {
+      const theme = window.EVENT_THEMES[e.theme_id || 0];
+      const emoji = e.emoji || '🎉';
+      return \`
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="background:\${theme.bg};color:\${theme.text};padding:24px;text-align:center;">
+            <div style="font-size:48px;margin-bottom:8px">\${emoji}</div>
+            <div style="font-size:24px;font-weight:800">\${esc(e.title)}</div>
+          </div>
+          <div style="padding:20px;">
+            <div class="meta" style="margin-bottom:12px">📍 \${esc(e.location||t('loc_none'))} · 🕒 \${new Date(e.starts_at).toLocaleDateString(lang==='ru'?'ru':'kk')} \${new Date(e.starts_at).toLocaleTimeString(lang==='ru'?'ru':'kk', {hour: '2-digit', minute:'2-digit'})}</div>
+            <p style="color:var(--text);margin:0">\${esc(e.description||'')}</p>
+          </div>
+        </div>
+      \`;
+    }).join('');
   } catch (e) { document.getElementById('fc').innerHTML = `Ошибка: ${esc(e.message)}`; }
 }
 
@@ -309,26 +324,93 @@ function renderQuestionnaireDetail(idx) {
     </div>`;
 }
 
+// --- Event card themes ---
+window.EVENT_THEMES = [
+  { id: 'purple', bg: 'linear-gradient(135deg, #667eea, #764ba2)', text: '#fff' },
+  { id: 'ocean', bg: 'linear-gradient(135deg, #43e97b, #38f9d7)', text: '#1a3a2a' },
+  { id: 'sunset', bg: 'linear-gradient(135deg, #f093fb, #f5576c)', text: '#fff' },
+  { id: 'sky', bg: 'linear-gradient(135deg, #4facfe, #00f2fe)', text: '#fff' },
+  { id: 'warm', bg: 'linear-gradient(135deg, #fa709a, #fee140)', text: '#4a2020' },
+  { id: 'dark', bg: 'linear-gradient(135deg, #2d3436, #636e72)', text: '#fff' },
+  { id: 'mint', bg: 'linear-gradient(135deg, #a8edea, #fed6e3)', text: '#3d4f5f' },
+  { id: 'fire', bg: 'linear-gradient(135deg, #f7971e, #ffd200)', text: '#5a3800' }
+];
+
+const EVENT_EMOJIS = ['🎉', '🌟', '💪', '🤝', '🎯', '📢', '🔥', '🏃', '🎶', '🌍', '❤️', '🏆', '📸', '🎨', '🍀', '⚡'];
+
+window._evTheme = 0;
+window._evEmoji = '🎉';
+
+window.pickTheme = (i) => { window._evTheme = i; updateEventPreview(); };
+window.pickEmoji = (e) => { window._evEmoji = e; updateEventPreview(); };
+
+function updateEventPreview() {
+  const title = document.getElementById('ev-title')?.value || 'Название';
+  const desc = document.getElementById('ev-desc')?.value || '';
+  const loc = document.getElementById('ev-loc')?.value || '';
+  const theme = window.EVENT_THEMES[window._evTheme];
+  const preview = document.getElementById('ev-preview');
+  if (!preview) return;
+  preview.innerHTML = `
+    <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);padding:28px 24px;text-align:center;transition:all 0.3s">
+      <div style="font-size:48px;margin-bottom:12px">${window._evEmoji}</div>
+      <div style="font-size:22px;font-weight:800;margin-bottom:8px">${esc(title)}</div>
+      ${desc ? `<div style="font-size:14px;opacity:0.85;margin-bottom:8px">${esc(desc)}</div>` : ''}
+      ${loc ? `<div style="font-size:13px;opacity:0.7">📍 ${esc(loc)}</div>` : ''}
+    </div>`;
+}
+
 async function renderEventsTab(el) {
+  const theme = window.EVENT_THEMES[window._evTheme];
   el.innerHTML = `
     <div class="card">
-      <h3>Новый анонс</h3>
-      <input type="text" id="ev-title" class="quiz-input" style="margin-bottom:10px" placeholder="Название" />
-      <textarea id="ev-desc" class="quiz-input quiz-textarea" style="margin-bottom:10px" placeholder="Описание"></textarea>
-      <input type="text" id="ev-loc" class="quiz-input" style="margin-bottom:10px" placeholder="Место" />
-      <input type="datetime-local" class="quiz-input" style="margin-bottom:10px" id="ev-date" />
-      <div style="margin-bottom:10px"><label class="meta">Баннер</label><br><input type="file" id="ev-img" accept="image/*" /></div>
-      <button class="btn" id="btn-create">Опубликовать</button>
+      <h3>Создать анонс</h3>
+
+      <div id="ev-preview" style="margin-bottom:16px">
+        <div style="background:${theme.bg};color:${theme.text};border-radius:var(--radius);padding:28px 24px;text-align:center">
+          <div style="font-size:48px;margin-bottom:12px">${window._evEmoji}</div>
+          <div style="font-size:22px;font-weight:800">Так будет выглядеть</div>
+        </div>
+      </div>
+
+      <label class="meta">Эмодзи</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        ${EVENT_EMOJIS.map(e => `<button onclick="pickEmoji('${e}')" style="font-size:24px;padding:6px 8px;border-radius:10px;border:2px solid ${window._evEmoji===e?'var(--accent)':'var(--border)'};background:${window._evEmoji===e?'#ede9fe':'var(--bg-card)'};cursor:pointer;transition:all 0.2s">${e}</button>`).join('')}
+      </div>
+
+      <label class="meta">Цвет фона</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        ${window.EVENT_THEMES.map((t, i) => `<button onclick="pickTheme(${i})" style="width:36px;height:36px;border-radius:50%;background:${t.bg};border:3px solid ${window._evTheme===i?'var(--accent)':'transparent'};cursor:pointer;transition:all 0.2s;box-shadow:${window._evTheme===i?'0 0 0 2px var(--accent)':'none'}"></button>`).join('')}
+      </div>
+
+      <input type="text" id="ev-title" class="quiz-input" style="margin-bottom:10px" placeholder="Название ивента" oninput="updateEventPreview()" />
+      <textarea id="ev-desc" class="quiz-input quiz-textarea" style="margin-bottom:10px;min-height:80px" placeholder="Описание" oninput="updateEventPreview()"></textarea>
+      <input type="text" id="ev-loc" class="quiz-input" style="margin-bottom:10px" placeholder="📍 Место проведения" oninput="updateEventPreview()" />
+      <input type="datetime-local" class="quiz-input" style="margin-bottom:14px" id="ev-date" />
+      <button class="btn" id="btn-create">Опубликовать 🚀</button>
     </div>`;
+
+  // Expose updateEventPreview to window
+  window.updateEventPreview = updateEventPreview;
+
   document.getElementById('btn-create').onclick = async () => {
-    const file = document.getElementById('ev-img').files[0];
-    let b64 = null;
-    if (file) { b64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); }); }
+    const title = document.getElementById('ev-title').value;
+    if (!title) return showToast('Введите название');
     try {
-      await api('/admin/events', { method: 'POST', body: JSON.stringify({ title: document.getElementById('ev-title').value, description: document.getElementById('ev-desc').value, location: document.getElementById('ev-loc').value, starts_at: document.getElementById('ev-date').value, banner_base64: b64 }) });
-      showToast('Опубликовано!'); renderAdmin();
+      await api('/admin/events', { method: 'POST', body: JSON.stringify({
+        title,
+        description: document.getElementById('ev-desc').value,
+        location: document.getElementById('ev-loc').value,
+        starts_at: document.getElementById('ev-date').value || new Date().toISOString(),
+        emoji: window._evEmoji,
+        theme_id: window._evTheme
+      }) });
+      showToast('Опубликовано! 🎉');
+      window._evTheme = 0; window._evEmoji = '🎉';
+      window.renderAdmin();
     } catch (e) { showToast(e.message); }
   };
 }
 
 route();
+

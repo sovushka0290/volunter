@@ -18,7 +18,8 @@ publicRouter.get(
       description: e.description,
       starts_at: e.starts_at,
       location: e.location,
-      banner_url: e.banner_url,
+      emoji: e.emoji,
+      theme_id: e.theme_id,
       status: e.status
     }));
 
