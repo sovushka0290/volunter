@@ -40,6 +40,7 @@ publicRouter.post(
     qs.push({
       id: Date.now(),
       tg_username: normalizedTg,
+      vector: req.body.vector || null,
       answers_json: JSON.stringify(answers || {}),
       created_at: new Date().toISOString()
     });

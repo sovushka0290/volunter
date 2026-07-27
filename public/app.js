@@ -1,6 +1,110 @@
 const app = () => document.getElementById('app');
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// --- CELEBRATION PARTICLES ---
+const PARTICLES = {
+  shapes: ['✦', '◆', '●', '▲', '★', '♦', '◉', '⬟', '❋', '✺'],
+  colors: ['#0ea5e9', '#06b6d4', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#22d3ee'],
+  
+  // Burst confetti from answer selection
+  burst(x, y, count = 18) {
+    const container = document.getElementById('particles') || this._createContainer();
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const shape = this.shapes[Math.floor(Math.random() * this.shapes.length)];
+      const color = this.colors[Math.floor(Math.random() * this.colors.length)];
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+      const velocity = 60 + Math.random() * 120;
+      const dx = Math.cos(angle) * velocity;
+      const dy = Math.sin(angle) * velocity;
+      const size = 10 + Math.random() * 16;
+      const dur = 800 + Math.random() * 600;
+      
+      p.textContent = shape;
+      p.style.cssText = `left:${x}px;top:${y}px;font-size:${size}px;color:${color};--dx:${dx}px;--dy:${dy}px;animation:particleBurst ${dur}ms cubic-bezier(0.25,0.46,0.45,0.94) forwards;`;
+      container.appendChild(p);
+      setTimeout(() => p.remove(), dur);
+    }
+  },
+
+  // Rain particles from top
+  rain(count = 25) {
+    const container = document.getElementById('particles') || this._createContainer();
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const shape = this.shapes[Math.floor(Math.random() * this.shapes.length)];
+        const color = this.colors[Math.floor(Math.random() * this.colors.length)];
+        const x = Math.random() * window.innerWidth;
+        const size = 8 + Math.random() * 14;
+        const dur = 1500 + Math.random() * 1500;
+        const sway = -50 + Math.random() * 100;
+        
+        p.textContent = shape;
+        p.style.cssText = `left:${x}px;top:-20px;font-size:${size}px;color:${color};--dx:${sway}px;--dy:${window.innerHeight + 50}px;animation:particleFall ${dur}ms ease-in forwards;opacity:0.8;`;
+        container.appendChild(p);
+        setTimeout(() => p.remove(), dur);
+      }, i * 60);
+    }
+  },
+
+  // Sparkle around an element
+  sparkle(el) {
+    const container = document.getElementById('particles') || this._createContainer();
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    for (let i = 0; i < 8; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.textContent = '✦';
+      const color = this.colors[Math.floor(Math.random() * this.colors.length)];
+      const angle = (Math.PI * 2 * i) / 8;
+      const r = 20 + Math.random() * 30;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      p.style.cssText = `left:${x}px;top:${y}px;font-size:14px;color:${color};animation:sparkleAnim 600ms ease-out forwards;`;
+      container.appendChild(p);
+      setTimeout(() => p.remove(), 600);
+    }
+  },
+
+  // Big celebration for final screen
+  celebrate() {
+    this.rain(40);
+    setTimeout(() => this.burst(window.innerWidth / 2, window.innerHeight / 2, 30), 300);
+    setTimeout(() => this.burst(window.innerWidth * 0.3, window.innerHeight * 0.4, 20), 600);
+    setTimeout(() => this.burst(window.innerWidth * 0.7, window.innerHeight * 0.4, 20), 900);
+  },
+  
+  _createContainer() {
+    const c = document.createElement('div');
+    c.id = 'particles';
+    c.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
+    document.body.appendChild(c);
+    return c;
+  }
+};
+
+// --- TRANSITION SYSTEM ---
+function transitionQuiz(renderFn) {
+  const content = document.querySelector('.quiz-content');
+  if (content) {
+    content.style.animation = 'slideOutLeft 0.3s ease forwards';
+    setTimeout(() => {
+      renderFn();
+      const newContent = document.querySelector('.quiz-content');
+      if (newContent) newContent.style.animation = 'slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+      if (window.lucide) window.lucide.createIcons();
+    }, 280);
+  } else {
+    renderFn();
+    if (window.lucide) window.lucide.createIcons();
+  }
+}
+
 const showToast = (msg) => {
   let c = document.getElementById('toasts');
   if (!c) { c = document.createElement('div'); c.id = 'toasts'; c.className = 'toasts'; document.body.appendChild(c); }
@@ -22,8 +126,10 @@ const api = async (path, opts = {}) => {
 let lang = localStorage.getItem('lang') || 'ru';
 window.setLang = (l) => { lang = l; localStorage.setItem('lang', l); route(); };
 
+const VECTOR_LABELS = { events: 'Іс-шара (Ивенты)', partners: 'Серіктестер (Партнеры)', media: 'Медиа', hr: 'HR', komek: 'Көмек (Волонтерство)', it: 'Креатив и IT', edu: 'Бірлес (Образование)', pr: 'Идеология и PR' };
+
 const I18N = {
-  home_title: { ru: 'Волонтёрское движение', kk: 'Еріктілер қозғалысы' },
+  home_title: { ru: 'Jastar Senaty', kk: 'Jastar Senaty' },
   home_sub: { ru: 'Присоединяйтесь к нашей команде!', kk: 'Біздің командаға қосылыңыз!' },
   btn_quiz: { ru: 'Заполнить анкету', kk: 'Сауалнаманы толтыру' },
   btn_feed: { ru: 'Анонсы', kk: 'Аңдатпалар' },
@@ -44,19 +150,66 @@ const t = (k) => I18N[k]?.[lang] || k;
 
 // --- QUESTIONS ---
 const QUESTIONS = [
+  { id: 'q_is_resident', type: 'choice', text: { ru: 'Вы уже являетесь резидентом Jastar Senaty?', kk: 'Сіз Jastar Senaty резидентісіз бе?' }, options: [{ text: { ru: 'Да', kk: 'Иә' } }, { text: { ru: 'Нет', kk: 'Жоқ' } }] },
   { id: 'q1', type: 'text', text: { ru: 'Как к вам обращаться?', kk: 'Сізге қалай жүгінейік?' } },
   { id: 'q2', type: 'text', text: { ru: 'Сколько вам лет?', kk: 'Жасыңыз нешеде?' } },
-  { id: 'q_city', type: 'text', text: { ru: 'Из какого вы города?', kk: 'Қай қаладансыз?' } },
-  { id: 'q_exp', type: 'choice', text: { ru: 'Был ли у вас опыт волонтёрства?', kk: 'Бұрын ерікті болдыңыз ба?' }, options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } },
-  { id: 'q_exp_desc', condition: (a) => a.q_exp === 'Да' || a.q_exp === 'Иә', type: 'text', text: { ru: 'Расскажите кратко о вашем опыте', kk: 'Тәжірибеңіз туралы қысқаша айтыңыз' } },
-  { id: 'q_freq', type: 'choice', text: { ru: 'Как часто вы можете помогать?', kk: 'Қаншалықты жиі көмектесе аласыз?' }, options: { ru: ['Каждую неделю', 'Раз в месяц', 'По возможности'], kk: ['Апта сайын', 'Айына бір рет', 'Мүмкіндігінше'] } },
-  { id: 'q_dir', type: 'choice', text: { ru: 'Какое направление вам ближе?', kk: 'Қай бағыт сізге жақын?' }, options: { ru: ['Медиа (фото, видео, соцсети)', 'Организация ивентов', 'Физическая помощь'], kk: ['Медиа (фото, видео, СЖ)', 'Іс-шараларды ұйымдастыру', 'Физикалық көмек'] } },
-  { id: 'q_media', condition: (a) => (a.q_dir||'').includes('Медиа'), type: 'choice', text: { ru: 'Умеете монтировать видео?', kk: 'Видео монтаждай аласыз ба?' }, options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } },
-  { id: 'q_org', condition: (a) => (a.q_dir||'').includes('Организация') || (a.q_dir||'').includes('ұйымдастыру'), type: 'choice', text: { ru: 'Легко находите язык с незнакомцами?', kk: 'Бейтаныстармен тез тіл табысасыз ба?' }, options: { ru: ['Да', 'Зависит от ситуации', 'Нет'], kk: ['Иә', 'Жағдайға байланысты', 'Жоқ'] } },
-  { id: 'q_phys', condition: (a) => (a.q_dir||'').includes('Физическая') || (a.q_dir||'').includes('Физикалық'), type: 'choice', text: { ru: 'Готовы переносить тяжести?', kk: 'Ауыр заттарды тасуға дайынсыз ба?' }, options: { ru: ['Да', 'Нет'], kk: ['Иә', 'Жоқ'] } },
+  { id: 's1', type: 'choice', text: { ru: 'Главный спикер застрял в пробке, в зале шумят 100 человек. Твои действия?', kk: 'Басты спикер кептелісте қалды, залда 100 адам шулап жатыр. Әрекетіңіз?' }, 
+    options: [
+      { text: { ru: 'Выйду на сцену и начну разогревать толпу сам', kk: 'Сахнаға шығып, халықты өзім қыздыра бастаймын' }, add: ['hr', 'pr'] },
+      { text: { ru: 'Пойду за кулисы перекраивать тайминг и искать замену', kk: 'Сахна артына барып, таймингті өзгертемін және ауыстыру іздеймін' }, add: ['events'] },
+      { text: { ru: 'Сниму трендовый рилс с ожидающей толпой', kk: 'Күтіп тұрған халықпен трендке сай рилс түсіремін' }, add: ['media', 'it'] },
+      { text: { ru: 'Найду спонсорские напитки и раздам людям, чтобы успокоить', kk: 'Демеушілік сусындарды тауып, адамдарды тыныштандыру үшін таратамын' }, add: ['partners', 'komek'] }
+    ]
+  },
+  { id: 's2', type: 'choice', text: { ru: 'Популярный паблик выложил про вас хейт-пост. Что делаешь?', kk: 'Танымал паблик сіз туралы хейт-пост шығарды. Не істейсіз?' }, 
+    options: [
+      { text: { ru: 'Напишу официальное опровержение с фактами и цифрами', kk: 'Фактілер мен сандармен ресми теріске шығару жазамын' }, add: ['pr', 'edu'] },
+      { text: { ru: 'Сделаю ироничный мем в ответ и выложу в сторис', kk: 'Жауап ретінде ирониялық мем жасап, сториске саламын' }, add: ['media', 'it'] },
+      { text: { ru: 'Игнорирую хейт, пойду организовывать доброе дело', kk: 'Хейтті елемей, қайырымдылық іс ұйымдастыруға барамын' }, add: ['komek', 'events'] },
+      { text: { ru: 'Созвонюсь с админом паблика и предложу партнерство', kk: 'Паблик админімен хабарласып, серіктестік ұсынамын' }, add: ['partners', 'hr'] }
+    ]
+  },
+  { id: 's3', type: 'choice', text: { ru: 'Новичок берет много задач, но постоянно срывает дедлайны.', kk: 'Жаңа адам көп тапсырма алады, бірақ дедлайндарды үнемі бұзады.' }, 
+    options: [
+      { text: { ru: 'Поговорю по душам, узнаю, что мешает, и помогу', kk: 'Шын жүректен сөйлесіп, не кедергі екенін біліп, көмектесемін' }, add: ['hr', 'komek'] },
+      { text: { ru: 'Заберу часть задач и сделаю сам, чтобы не сорвать проект', kk: 'Жобаны бұзбау үшін тапсырмалардың бір бөлігін өзім жасаймын' }, add: ['events'] },
+      { text: { ru: 'Предложу ему пройти курс по тайм-менеджменту', kk: 'Оған тайм-менеджмент курсынан өтуді ұсынамын' }, add: ['edu'] },
+      { text: { ru: 'Жестко поставлю рамки: еще один срыв — переводим в резерв', kk: 'Қатаң шектеу қоямын: тағы бір бұзу — резервке ауыстырамыз' }, add: ['pr', 'partners'] }
+    ]
+  },
+  { id: 's4', type: 'choice', text: { ru: 'Нам нужно вовлечь трудных подростков в работу. Что предложишь?', kk: 'Біз қиын жасөспірімдерді жұмысқа тартуымыз керек. Не ұсынасыз?' }, 
+    options: [
+      { text: { ru: 'Проведем уличный фестиваль с рэпом и стрит-артом', kk: 'Рэп және стрит-артпен көше фестивалін өткіземіз' }, add: ['events', 'it'] },
+      { text: { ru: 'Организуем сбор макулатуры с призами от спонсоров', kk: 'Демеушілерден сыйлықтармен макулатура жинауды ұйымдастырамыз' }, add: ['komek', 'partners'] },
+      { text: { ru: 'Снимем про них документалку, чтобы дать им высказаться', kk: 'Оларға өз ойларын айтуға мүмкіндік беру үшін деректі фильм түсіреміз' }, add: ['media', 'pr'] },
+      { text: { ru: 'Проведем воркшопы по дизайну, чтобы дать им профессию', kk: 'Оларға мамандық беру үшін дизайн бойынша воркшоптар өткіземіз' }, add: ['edu', 'hr'] }
+    ]
+  },
+  { id: 's5', type: 'choice', text: { ru: 'Спонсор дает деньги, но просит рекламировать вредный для экологии продукт.', kk: 'Демеуші ақша береді, бірақ экологияға зиянды өнімді жарнамалауды сұрайды.' }, 
+    options: [
+      { text: { ru: 'Откажусь. Репутация и принципы важнее денег', kk: 'Бас тартамын. Бедел мен принциптер ақшадан маңызды' }, add: ['pr', 'komek'] },
+      { text: { ru: 'Попытаюсь переубедить его проспонсировать наш ЭКО-проект', kk: 'Оны біздің ЭКО-жобаға демеушілік жасауға көндіруге тырысамын' }, add: ['partners'] },
+      { text: { ru: 'Соглашусь, но рекламу сделаю максимально нейтральной', kk: 'Келісемін, бірақ жарнаманы барынша бейтарап жасаймын' }, add: ['events', 'media'] },
+      { text: { ru: 'Проведу опрос среди команды: если большинство "за", берем', kk: 'Команда арасында сауалнама жүргіземін: егер көпшілік "қолдаса", аламыз' }, add: ['hr', 'edu'] }
+    ]
+  },
+  { id: 's6', type: 'choice', text: { ru: 'Какой навык ты хочешь прокачать больше всего?', kk: 'Қандай дағдыны көбірек дамытқыңыз келеді?' }, 
+    options: [
+      { text: { ru: 'Съемка, монтаж, дизайн, IT', kk: 'Түсірілім, монтаж, дизайн, IT' }, add: ['media', 'it'] },
+      { text: { ru: 'Управление людьми, психология, нетворкинг', kk: 'Адамдарды басқару, психология, нетворкинг' }, add: ['hr', 'partners'] },
+      { text: { ru: 'Организация масштабных событий, логистика', kk: 'Ауқымды іс-шараларды ұйымдастыру, логистика' }, add: ['events'] },
+      { text: { ru: 'Ораторское искусство, создание смыслов, образование', kk: 'Шешендік өнер, мағына жасау, білім беру' }, add: ['edu', 'pr', 'komek'] }
+    ]
+  },
   { id: 'q_wa', type: 'text', text: { ru: 'Ваш номер WhatsApp', kk: 'WhatsApp нөміріңіз' } }
 ];
 
+const COORD_QUESTIONS = [
+  { id: 'name', type: 'text', text: { ru: 'Как вас зовут?', kk: 'Есіміңіз кім?' } },
+  ...QUESTIONS.slice(2, -1), // Only the situational questions
+  { id: 'coord_login', type: 'text', text: { ru: 'Придумайте логин', kk: 'Логин ойлап табыңыз' } },
+  { id: 'coord_pass', type: 'text', text: { ru: 'Придумайте пароль', kk: 'Құпия сөз ойлап табыңыз' } }
+];
 let quizState = { step: 0, answers: {} };
 
 function getNextStep(cur) {
@@ -73,38 +226,56 @@ function getNextStep(cur) {
 window.adminTab = 'dashboard';
 window.viewingQuestionnaire = null;
 
+let coordQuizState = { step: 0, answers: {} };
+
 window.addEventListener('hashchange', route);
 function route() {
+  const p = window.location.pathname;
+  if (p === '/quiz') { window.history.replaceState(null, '', '/#quiz'); }
+  if (p === '/coord') { window.history.replaceState(null, '', '/#coord-reg'); }
+  
   const h = window.location.hash || '#home';
   if (h === '#home') renderHome();
   else if (h === '#feed') renderFeed();
   else if (h === '#quiz') { if (quizState.step === 0) quizState = { step: 0, answers: {} }; renderQuiz(); }
+  else if (h === '#coord-reg') { if (coordQuizState.step === 0) coordQuizState = { step: 0, answers: {} }; renderCoordReg(); }
   else if (h === '#admin') window.renderAdmin();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 // --- HOME ---
 function renderHome() {
   app().innerHTML = `
     <div class="home-container">
-      <button class="admin-circle" id="btn-admin" title="Admin">⚙</button>
       <div style="position:absolute;top:20px;right:20px">
         <button class="btn-outline btn-small" onclick="setLang(lang==='ru'?'kk':'ru')">${lang==='ru'?'ҚАЗ':'РУС'}</button>
       </div>
-      <div class="home-logo">✨</div>
+      <div class="home-logo"><i data-lucide="sparkles" style="width:72px;height:72px;stroke-width:1.5;color:var(--accent);filter:drop-shadow(0 0 20px rgba(2, 132, 199, 0.4))"></i></div>
       <h1>${t('home_title')}</h1>
       <p style="margin-bottom:36px;color:var(--text-muted)">${t('home_sub')}</p>
       <a href="#quiz" class="btn">${t('btn_quiz')}</a>
-      <a href="#feed" class="btn btn-secondary">${t('btn_feed')}</a>
+      
+      <div style="margin-top:40px">
+        <button id="btn-admin" style="background:none;border:none;color:var(--text-muted);font-size:13px;font-family:var(--font-body);cursor:pointer;opacity:0.6;transition:opacity 0.2s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+          Вход для сотрудников
+        </button>
+      </div>
     </div>`;
   document.getElementById('btn-admin').onclick = async () => {
+    const login = prompt('Логин:');
+    if (!login) return;
     const pwd = prompt('Пароль:');
     if (!pwd) return;
     try {
-      const r = await api('/auth/login', { method: 'POST', body: JSON.stringify({ contact: 'admin', password: pwd }) });
+      const r = await api('/auth/login', { method: 'POST', body: JSON.stringify({ contact: login, password: pwd }) });
       localStorage.setItem('token', r.token);
-      adminTab = 'dashboard'; viewingQuestionnaire = null;
+      localStorage.setItem('user_role', r.user.role || 'admin');
+      localStorage.setItem('user_vector', r.user.vector || '');
+      localStorage.setItem('user_label', r.user.label || 'Админ');
+      adminTab = r.user.role === 'coordinator' ? 'list' : 'dashboard'; 
+      viewingQuestionnaire = null;
       window.location.hash = '#admin';
-    } catch { alert('Неверный пароль'); }
+    } catch { alert('Неверный логин или пароль'); }
   };
 }
 
@@ -117,7 +288,10 @@ function renderQuiz() {
   const qText = q.text[lang];
   let inp = '';
   if (q.type === 'choice') {
-    inp = `<div class="quiz-options">${q.options[lang].map(o => `<button class="quiz-option ${val===o?'selected':''}" data-val="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+    inp = `<div class="quiz-options" style="display:flex;flex-direction:column;gap:8px;">${q.options.map(o => {
+      const optText = o.text[lang];
+      return `<button class="quiz-option ${val===optText?'selected':''}" data-val="${esc(optText)}" style="text-align:left;height:auto;white-space:normal;line-height:1.4">${esc(optText)}</button>`;
+    }).join('')}</div>`;
   } else {
     inp = `<input type="text" id="q-input" class="quiz-input" placeholder="${t('placeholder')}" value="${esc(val)}" />`;
   }
@@ -126,29 +300,160 @@ function renderQuiz() {
       <div class="progress-container">
         <button class="btn-close" onclick="window.location.hash='#home'">✕</button>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <button class="btn-outline btn-small" style="padding: 4px 8px; font-size: 12px; margin-left: 8px" onclick="setLang(lang==='ru'?'kk':'ru')">${lang==='ru'?'ҚАЗ':'РУС'}</button>
       </div>
       <div class="quiz-content"><div class="quiz-question">${esc(qText)}</div>${inp}</div>
       <div class="quiz-footer"><button class="btn" id="btn-next">${t('btn_next')}</button></div>
     </div>`;
   if (q.type === 'choice') {
-    document.querySelectorAll('.quiz-option').forEach(b => { b.onclick = () => { quizState.answers[q.id] = b.getAttribute('data-val'); renderQuiz(); }; });
+    document.querySelectorAll('.quiz-option').forEach(b => { 
+      b.onclick = (e) => { 
+        quizState.answers[q.id] = b.getAttribute('data-val'); 
+        // Particle burst from click point
+        PARTICLES.burst(e.clientX, e.clientY, 12);
+        PARTICLES.sparkle(b);
+        renderQuiz(); 
+      }; 
+    });
   }
-  document.getElementById('btn-next').onclick = () => {
+  document.getElementById('btn-next').onclick = (e) => {
     if (q.type !== 'choice') { const i = document.getElementById('q-input'); if (!i.value.trim()) return showToast(t('err_empty')); quizState.answers[q.id] = i.value.trim(); }
     else { if (!quizState.answers[q.id]) return showToast(t('err_choice')); }
     quizState.step = getNextStep(quizState.step);
-    renderQuiz();
+    // Rain particles + slide transition
+    PARTICLES.rain(10);
+    transitionQuiz(renderQuiz);
   };
 }
 
 async function renderQuizDone() {
-  app().innerHTML = `<div class="home-container"><div class="home-logo">⏳</div><h1>${t('sending')}</h1></div>`;
+  app().innerHTML = `<div class="home-container"><div class="home-logo"><i data-lucide="loader-2" style="width:48px;height:48px;color:var(--accent);animation:spin 1s linear infinite"></i></div><h1>${t('sending')}</h1></div>`;
+  if (window.lucide) window.lucide.createIcons();
   try {
-    await api('/public/questionnaires', { method: 'POST', body: JSON.stringify({ tg_username: quizState.answers.q_wa || '?', answers: quizState.answers }) });
-    app().innerHTML = `<div class="home-container"><div class="home-logo">🎉</div><h1>${t('done_title')}</h1><p style="margin-bottom:32px;color:var(--text-muted)">${t('done_text')}</p><a href="#home" class="btn">${t('btn_home')}</a></div>`;
+    const scores = { events:0, partners:0, media:0, hr:0, komek:0, it:0, edu:0, pr:0 };
+    for (const q of QUESTIONS) {
+      if (q.type === 'choice' && q.options) {
+        const selectedText = quizState.answers[q.id];
+        const opt = q.options.find(o => o.text.ru === selectedText || o.text.kk === selectedText);
+        if (opt && opt.add) {
+          opt.add.forEach(v => scores[v]++);
+        }
+      }
+    }
+    
+    let maxV = 'events';
+    let maxS = -1;
+    for (const [k, v] of Object.entries(scores)) {
+      if (v > maxS) { maxS = v; maxV = k; }
+    }
+
+    await api('/public/questionnaires', {
+      method: 'POST',
+      body: JSON.stringify({ tg_username: quizState.answers.q_wa || '?', answers: quizState.answers, vector: maxV })
+    });
+    app().innerHTML = `<div class="home-container"><div class="home-logo"><i data-lucide="party-popper" style="width:64px;height:64px;color:var(--accent)"></i></div><h1>${t('done_title')}</h1><p style="margin-bottom:32px;color:var(--text-muted)">${t('done_text')}</p><a href="#home" class="btn">${t('btn_home')}</a></div>`;
+    if (window.lucide) window.lucide.createIcons();
+    PARTICLES.celebrate();
     quizState = { step: 0, answers: {} };
   } catch (e) {
     app().innerHTML = `<div class="home-container"><h1>${t('err_send')}</h1><p>${esc(e.message)}</p><button class="btn" onclick="renderQuizDone()">${t('btn_retry')}</button><a href="#home" class="btn btn-outline" style="margin-top:8px">${t('btn_home')}</a></div>`;
+  }
+}
+
+// --- COORD REGISTRATION ---
+function renderCoordReg() {
+  const q = COORD_QUESTIONS[coordQuizState.step];
+  if (!q) return renderCoordDone();
+
+  const pct = Math.round((coordQuizState.step / COORD_QUESTIONS.length) * 100);
+
+  app().innerHTML = `
+    <div class="layout">
+      <div class="progress-container">
+        <button class="btn-close" onclick="window.location.hash='#home'">✕</button>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <button class="btn-outline btn-small" style="padding: 4px 8px; font-size: 12px; margin-left: 8px" onclick="setLang(lang==='ru'?'kk':'ru')">${lang==='ru'?'ҚАЗ':'РУС'}</button>
+      </div>
+      <div class="quiz-content">
+        <div class="quiz-question">${esc(q.text[lang] || q.text.ru)}</div>
+        ${q.type === 'choice' ? `
+          <div class="quiz-options">
+            ${q.options.map(o => {
+              const text = o.text[lang] || o.text.ru;
+              const sel = coordQuizState.answers[q.id] === text ? 'selected' : '';
+              return `<div class="quiz-option ${sel}" data-val="${esc(text)}">${esc(text)}</div>`;
+            }).join('')}
+          </div>` : `
+          <input type="text" id="qa" class="quiz-input" placeholder="${t('placeholder')}" value="${esc(coordQuizState.answers[q.id] || '')}" autofocus />
+        `}
+      </div>
+      <div class="quiz-footer">
+        <button class="btn" id="btn-n">${t('btn_next')}</button>
+      </div>
+    </div>`;
+
+  if (q.type === 'choice') {
+    document.querySelectorAll('.quiz-option').forEach(b => { 
+      b.onclick = (e) => { 
+        coordQuizState.answers[q.id] = b.getAttribute('data-val'); 
+        PARTICLES.burst(e.clientX, e.clientY, 12);
+        PARTICLES.sparkle(b);
+        renderCoordReg(); 
+      }; 
+    });
+  }
+
+  document.getElementById('btn-n').onclick = () => {
+    if (q.type === 'text') {
+      const v = document.getElementById('qa').value.trim();
+      if (!v) return showToast(t('err_empty'));
+      coordQuizState.answers[q.id] = v;
+    } else if (!coordQuizState.answers[q.id]) {
+      return showToast(t('err_choice'));
+    }
+    coordQuizState.step++;
+    PARTICLES.rain(10);
+    transitionQuiz(renderCoordReg);
+  };
+}
+
+async function renderCoordDone() {
+  app().innerHTML = `<div class="home-container"><div class="home-logo"><i data-lucide="loader-2" style="width:48px;height:48px;color:var(--accent);animation:spin 1s linear infinite"></i></div><h1>${t('sending')}</h1></div>`;
+  if (window.lucide) window.lucide.createIcons();
+  try {
+    const scores = { events:0, partners:0, media:0, hr:0, komek:0, it:0, edu:0, pr:0 };
+    for (const q of COORD_QUESTIONS) {
+      if (q.type === 'choice' && q.options) {
+        const selectedText = coordQuizState.answers[q.id];
+        const opt = q.options.find(o => o.text.ru === selectedText || o.text.kk === selectedText);
+        if (opt && opt.add) {
+          opt.add.forEach(v => scores[v]++);
+        }
+      }
+    }
+    
+    let maxV = 'events';
+    let maxS = -1;
+    for (const [k, v] of Object.entries(scores)) {
+      if (v > maxS) { maxS = v; maxV = k; }
+    }
+
+    const res = await api('/auth/register-coord', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        contact: coordQuizState.answers.coord_login, 
+        password: coordQuizState.answers.coord_pass,
+        answers: coordQuizState.answers, 
+        vector: maxV 
+      })
+    });
+    
+    app().innerHTML = `<div class="home-container"><div class="home-logo"><i data-lucide="party-popper" style="width:64px;height:64px;color:var(--accent)"></i></div><h1>Успешно!</h1><p style="margin-bottom:32px;color:var(--text-muted)">Ваш аккаунт создан (Вектор: <b>${VECTOR_LABELS[maxV]}</b>).<br><br>Ожидайте подтверждения от администратора перед входом.</p><a href="#home" class="btn">На главную</a></div>`;
+    if (window.lucide) window.lucide.createIcons();
+    PARTICLES.celebrate();
+    coordQuizState = { step: 0, answers: {} };
+  } catch (e) {
+    app().innerHTML = `<div class="home-container"><h1>${t('err_send')}</h1><p>${esc(e.message)}</p><button class="btn" onclick="renderCoordDone()">${t('btn_retry')}</button><a href="#home" class="btn btn-outline" style="margin-top:8px">${t('btn_home')}</a></div>`;
   }
 }
 
@@ -193,16 +498,24 @@ window.renderAdmin = async function renderAdmin() {
   // If viewing a single questionnaire
   if (window.viewingQuestionnaire !== null) return renderQuestionnaireDetail(window.viewingQuestionnaire);
 
+  const role = localStorage.getItem('user_role') || 'admin';
+  const label = localStorage.getItem('user_label') || 'Админ';
+
   app().innerHTML = `
     <div class="layout">
       <div class="top-nav">
-        <a href="#" onclick="localStorage.removeItem('token');window.location.hash='#home';return false">← Выйти</a>
-        <span style="font-weight:700;color:var(--accent)">Админ</span>
+        <a href="#" onclick="localStorage.removeItem('token');localStorage.removeItem('user_role');window.location.hash='#home';return false">← Выйти</a>
+        <span style="font-weight:700;color:var(--accent)">${esc(label)}</span>
       </div>
       <div class="tabs">
-        <button class="tab ${window.adminTab==='dashboard'?'active':''}" onclick="window.adminTab='dashboard';window.renderAdmin()">📊 Дашборд</button>
+        ${role === 'admin' ? `
+          <button class="tab ${window.adminTab==='dashboard'?'active':''}" onclick="window.adminTab='dashboard';window.renderAdmin()">📊 Дашборд</button>
+        ` : ''}
         <button class="tab ${window.adminTab==='list'?'active':''}" onclick="window.adminTab='list';window.renderAdmin()">📋 Анкеты</button>
-        <button class="tab ${window.adminTab==='events'?'active':''}" onclick="window.adminTab='events';window.renderAdmin()">📢 Анонсы</button>
+        ${role === 'admin' ? `
+          <button class="tab ${window.adminTab==='events'?'active':''}" onclick="window.adminTab='events';window.renderAdmin()">📢 Анонсы</button>
+          <button class="tab ${window.adminTab==='coords'?'active':''}" onclick="window.adminTab='coords';window.renderAdmin()">👥 Координаторы</button>
+        ` : ''}
       </div>
       <div id="admin-content">Загрузка...</div>
     </div>`;
@@ -213,7 +526,8 @@ window.renderAdmin = async function renderAdmin() {
 
     if (window.adminTab === 'dashboard') renderDashboard(container, items);
     else if (window.adminTab === 'list') renderQList(container, items);
-    else renderEventsTab(container);
+    else if (window.adminTab === 'events') renderEventsTab(container);
+    else if (window.adminTab === 'coords') renderCoordsTab(container);
   } catch (e) {
     document.getElementById('admin-content').innerHTML = `<div class="card"><p>Ошибка: ${esc(e.message)}</p></div>`;
   }
@@ -223,75 +537,70 @@ function renderDashboard(el, items) {
   const total = items.length;
   const today = items.filter(q => { const d = new Date(q.created_at); const now = new Date(); return d.toDateString() === now.toDateString(); }).length;
   
-  // Count directions
-  const dirs = {};
-  const freqs = {};
-  const cities = {};
+  // Count vectors
+  const vectors = {};
   items.forEach(q => {
-    const a = q.answers || {};
-    if (a.q_dir) dirs[a.q_dir] = (dirs[a.q_dir]||0)+1;
-    if (a.q_freq) freqs[a.q_freq] = (freqs[a.q_freq]||0)+1;
-    if (a.q_city) { const c = a.q_city.trim(); cities[c] = (cities[c]||0)+1; }
+    if (q.vector) vectors[q.vector] = (vectors[q.vector]||0)+1;
   });
 
-  const maxDir = Math.max(...Object.values(dirs), 1);
-  const maxFreq = Math.max(...Object.values(freqs), 1);
+  const maxV = Math.max(...Object.values(vectors), 1);
 
   el.innerHTML = `
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-number">${total}</div><div class="stat-label">Всего анкет</div></div>
       <div class="stat-card"><div class="stat-number">${today}</div><div class="stat-label">Сегодня</div></div>
-      <div class="stat-card"><div class="stat-number">${Object.keys(cities).length}</div><div class="stat-label">Городов</div></div>
-      <div class="stat-card"><div class="stat-number">${items.filter(q=>(q.answers||{}).q_exp==='Да'||(q.answers||{}).q_exp==='Иә').length}</div><div class="stat-label">С опытом</div></div>
     </div>
 
-    ${Object.keys(dirs).length ? `
+    ${Object.keys(vectors).length ? `
     <div class="card">
-      <h3 style="margin-bottom:16px">Направления</h3>
-      ${Object.entries(dirs).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `
+      <h3 style="margin-bottom:16px">Векторы (Таланты)</h3>
+      ${Object.entries(vectors).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `
         <div class="chart-bar-row">
-          <div class="chart-label">${esc(k.replace(/\(.*\)/,'').trim())}</div>
-          <div class="chart-track"><div class="chart-fill" style="width:${(v/maxDir*100)}%"></div></div>
+          <div class="chart-label">${esc(VECTOR_LABELS[k] || k)}</div>
+          <div class="chart-track"><div class="chart-fill" style="width:${(v/maxV*100)}%"></div></div>
           <div class="chart-value">${v}</div>
         </div>
       `).join('')}
-    </div>` : ''}
-
-    ${Object.keys(freqs).length ? `
-    <div class="card">
-      <h3 style="margin-bottom:16px">Частота участия</h3>
-      ${Object.entries(freqs).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `
-        <div class="chart-bar-row">
-          <div class="chart-label">${esc(k)}</div>
-          <div class="chart-track"><div class="chart-fill" style="width:${(v/maxFreq*100)}%"></div></div>
-          <div class="chart-value">${v}</div>
-        </div>
-      `).join('')}
-    </div>` : ''}
-
-    ${Object.keys(cities).length ? `
-    <div class="card">
-      <h3 style="margin-bottom:12px">Города</h3>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${Object.entries(cities).sort((a,b)=>b[1]-a[1]).map(([c,n]) => `<span style="background:var(--bg);padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600">${esc(c)} <span style="color:var(--accent)">${n}</span></span>`).join('')}
-      </div>
     </div>` : ''}
   `;
 }
 
 function renderQList(el, items) {
   if (!items.length) { el.innerHTML = '<div class="card"><p>Анкет пока нет.</p></div>'; return; }
-  el.innerHTML = items.map((q, i) => `
-    <div class="card card-clickable" onclick="window.viewingQuestionnaire=${i};window.renderAdmin()" style="animation-delay:${i*0.05}s">
+  
+  const userVector = localStorage.getItem('user_vector');
+  const role = localStorage.getItem('user_role');
+
+  if (role === 'coordinator' && userVector) {
+    items.sort((a, b) => {
+      const aMatch = a.vector === userVector;
+      const bMatch = b.vector === userVector;
+      if (aMatch && !bMatch) return -1;
+      if (!aMatch && bMatch) return 1;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+  } else {
+    items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+  
+  el.innerHTML = items.map((q, i) => {
+    const isMatch = role === 'coordinator' && q.vector === userVector;
+    return `
+    <div class="card card-clickable" onclick="window.viewingQuestionnaire=${i};window.renderAdmin()" style="animation-delay:${i*0.05}s; ${isMatch ? 'border-left: 4px solid #10b981;' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-weight:800;font-size:17px">@${esc(q.tg_username)}</div>
-          <div class="meta">${new Date(q.created_at).toLocaleString('ru')}${(q.answers||{}).q_city ? ' · '+esc(q.answers.q_city) : ''}</div>
+          <div style="font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px">
+            @${esc(q.tg_username || (q.answers&&q.answers.name) || 'Аноним')}
+            ${q.answers && (q.answers.q_is_resident === 'Да' || q.answers.q_is_resident === 'Иә') ? `<span style="font-size:11px;background:#3b82f6;color:#fff;padding:2px 8px;border-radius:12px">✅ Резидент</span>` : `<span style="font-size:11px;background:#ef4444;color:#fff;padding:2px 8px;border-radius:12px">🔥 Новый</span>`}
+            ${q.vector ? `<span style="font-size:11px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:12px">${esc(VECTOR_LABELS[q.vector] || q.vector)}</span>` : ''}
+            ${isMatch ? `<span style="font-size:11px;background:#10b981;color:#fff;padding:2px 8px;border-radius:12px;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="zap" style="width:12px;height:12px;"></i> Идеальный мэтч</span>` : ''}
+          </div>
+          <div class="meta">${new Date(q.created_at).toLocaleString('ru')}</div>
         </div>
-        <div style="color:var(--accent);font-size:20px">→</div>
+        <div style="color:var(--accent);font-size:20px;display:flex;align-items:center;"><i data-lucide="chevron-right"></i></div>
       </div>
     </div>
-  `).join('');
+  `}).join('');
   
   // Store items globally for detail view
   window._adminItems = items;
@@ -312,9 +621,13 @@ function renderQuestionnaireDetail(idx) {
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
           <div style="width:48px;height:48px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px">${esc((q.tg_username||'?')[0].toUpperCase())}</div>
           <div>
-            <div style="font-weight:800;font-size:18px">@${esc(q.tg_username)}</div>
+            <div style="font-weight:800;font-size:18px">@${esc(q.tg_username || (q.answers&&q.answers.name) || 'Аноним')}</div>
             <div class="meta">${new Date(q.created_at).toLocaleString('ru')}</div>
           </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${q.answers && (q.answers.q_is_resident === 'Да' || q.answers.q_is_resident === 'Иә') ? `<span style="font-size:13px;background:#3b82f6;color:#fff;padding:4px 10px;border-radius:12px;font-weight:700">✅ Резидент</span>` : `<span style="font-size:13px;background:#ef4444;color:#fff;padding:4px 10px;border-radius:12px;font-weight:700">🔥 Новый</span>`}
+          ${q.vector ? `<span style="font-size:13px;background:var(--accent);color:#fff;padding:4px 10px;border-radius:12px;font-weight:700">Вектор: ${esc(VECTOR_LABELS[q.vector] || q.vector)}</span>` : ''}
         </div>
       </div>
       <div class="card">
@@ -446,6 +759,40 @@ async function renderEventsTab(el) {
     } catch (e) { showToast(e.message); }
   };
 }
+
+async function renderCoordsTab(el) {
+  el.innerHTML = '<div class="card"><p>Загрузка...</p></div>';
+  try {
+    const { items } = await api('/admin/coordinators');
+    if (!items.length) { el.innerHTML = '<div class="card"><p>Координаторов нет.</p></div>'; return; }
+    
+    el.innerHTML = items.map(c => `
+      <div class="card" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:700;font-size:18px">${esc(c.contact)}</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">
+            Вектор: <b>${esc(VECTOR_LABELS[c.vector] || c.vector)}</b>
+          </div>
+        </div>
+        <div>
+          ${c.is_approved 
+            ? '<span style="color:#10b981;font-weight:700;font-size:13px">✅ Одобрен</span>' 
+            : `<button class="btn btn-small" onclick="approveCoord(${c.id})" style="background:var(--accent)">Одобрить</button>`}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<div class="card"><p>Ошибка: ${esc(e.message)}</p></div>`;
+  }
+}
+
+window.approveCoord = async function(id) {
+  try {
+    await api(\`/admin/coordinators/\${id}/approve\`, { method: 'POST' });
+    showToast('Координатор одобрен!');
+    window.renderAdmin();
+  } catch(e) { showToast(e.message); }
+};
 
 route();
 

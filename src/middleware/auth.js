@@ -19,7 +19,7 @@ export async function requireAuth(req, _res, next) {
   try {
     const payload = jwt.verify(token, config.jwtSecret);
     // Admin is hardcoded, no DB lookup needed
-    req.user = { id: payload.id, role: payload.role, contact: 'admin' };
+    req.user = { id: payload.id, role: payload.role, contact: payload.contact || 'admin', vector: payload.vector };
     next();
   } catch {
     next(new ApiError(401, 'Сессия истекла. Войдите заново'));
