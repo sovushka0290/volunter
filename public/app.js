@@ -788,7 +788,7 @@ async function renderCoordsTab(el) {
 
 window.approveCoord = async function(id) {
   try {
-    await api(\`/admin/coordinators/\${id}/approve\`, { method: 'POST' });
+    await api(`/admin/coordinators/${id}/approve`, { method: 'POST' });
     showToast('Координатор одобрен!');
     window.renderAdmin();
   } catch(e) { showToast(e.message); }
